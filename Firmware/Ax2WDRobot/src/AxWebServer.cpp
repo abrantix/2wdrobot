@@ -398,6 +398,7 @@ void AxWebServer::Init()
       {
         case 1:
         AxDisplayInstance.DisplayCustom("Option 1");
+        MotorDriverInstance.EnqueueMovement(MovementType_RotateClockwise, SPEED_DEFAULT, 1500);
         break;
         case 2:
         AxDisplayInstance.DisplayCustom("Option 2");

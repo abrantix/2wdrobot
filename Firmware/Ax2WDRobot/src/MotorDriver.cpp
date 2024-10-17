@@ -1,92 +1,69 @@
-/* MotorDriver.cpp */
-
 #include "MotorDriver.hpp"
 #include "Trace.h"
 
 MotorDriver MotorDriverInstance;
 
-Motor::Motor()
-{
-}
+Motor::Motor() {}
+Motor::~Motor() {}
 
-Motor::~Motor()
-{
-
-}
-
-void Motor::SetupPwm(uint8_t pin)
-{
+void Motor::SetupPwm(uint8_t pin) {
     ledcAttachPin(pin, pwmChannel);
     ledcSetup(pwmChannel, PWM_Frequency, PWM_Resolution);
 }
 
-void Motor::SetSpeed(uint8_t speed)
-{
+void Motor::SetSpeed(uint8_t speed) {
     this->speed = speed;
     UpdatePwm(false);
 }
 
-void Motor::UpdatePwm(bool MotorStateChanged)
-{
-    if(MotorStateChanged)
-    {
-        switch(state)
-        {
+void Motor::UpdatePwm(bool MotorStateChanged) {
+    if (MotorStateChanged) {
+        switch (state) {
             case MotorState_Forward:
                 SetupPwm(pinA);
                 ledcWrite(pwmChannel, speed);
                 pinMode(pinB, OUTPUT);
                 digitalWrite(pinB, 0);
-            break;
+                break;
             case MotorState_Backward:
                 SetupPwm(pinB);
                 ledcWrite(pwmChannel, speed);
                 pinMode(pinA, OUTPUT);
                 digitalWrite(pinA, 0);
-            break;
+                break;
             case MotorState_Stop:
                 pinMode(pinA, OUTPUT);
                 digitalWrite(pinA, 0);
                 pinMode(pinB, OUTPUT);
                 digitalWrite(pinB, 0);
-            break;
+                break;
             default:
-            break;
+                break;
         }
-    }
-    else
-    {
-        if(state != MotorState_Stop)
-        {
+    } else {
+        if (state != MotorState_Stop) {
             ledcWrite(pwmChannel, speed);
         }
     }
 }
 
-MotorDriver::MotorDriver()
-{
+MotorDriver::MotorDriver() : isMoving(false), lastMoveTime(0) {
     motorL.pwmChannel = PWM_L_Ch;
     motorR.pwmChannel = PWM_R_Ch;
-
     motorL.pinA = MOTOR_L1_PIN;
     motorL.pinB = MOTOR_L2_PIN;
     motorR.pinA = MOTOR_R1_PIN;
     motorR.pinB = MOTOR_R2_PIN;
 }
 
-MotorDriver::~MotorDriver()
-{
-}
+MotorDriver::~MotorDriver() {}
 
-void MotorDriver::Init()
-{
+void MotorDriver::Init() {
     Stop();
     SetSpeed(SPEED_DEFAULT);
 }
 
-/// @brief Stop both Motors
-void MotorDriver::Stop()
-{
+void MotorDriver::Stop() {
     motorR.state = MotorState_Stop;
     motorL.state = MotorState_Stop;
     motorL.SetSpeed(0);
@@ -95,64 +72,114 @@ void MotorDriver::Stop()
     motorL.UpdatePwm(true);
 }
 
-void MotorDriver::Process()
-{
-}
-
-void MotorDriver::SetSpeed(uint8_t speed)
-{
+void MotorDriver::SetSpeed(uint8_t speed) {
     motorR.SetSpeed(speed);
     motorL.SetSpeed(speed);
     motorR.UpdatePwm(false);
     motorL.UpdatePwm(false);
 }
 
-void MotorDriver::Forward()
-{
+void MotorDriver::Forward() {
     motorR.state = MotorState_Forward;
     motorL.state = MotorState_Forward;
     motorR.UpdatePwm(true);
     motorL.UpdatePwm(true);
 }
 
-void MotorDriver::Backward()
-{
+void MotorDriver::Backward() {
     motorR.state = MotorState_Backward;
     motorL.state = MotorState_Backward;
     motorR.UpdatePwm(true);
     motorL.UpdatePwm(true);
 }
 
-void MotorDriver::Left()
-{
+void MotorDriver::Left() {
     motorR.state = MotorState_Forward;
     motorL.state = MotorState_Stop;
     motorR.UpdatePwm(true);
     motorL.UpdatePwm(true);
 }
 
-void MotorDriver::Right()
-{
+void MotorDriver::Right() {
     motorR.state = MotorState_Stop;
     motorL.state = MotorState_Forward;
     motorR.UpdatePwm(true);
     motorL.UpdatePwm(true);
 }
 
-void MotorDriver::RotateClockwise()
-{
+void MotorDriver::RotateClockwise() {
     motorR.state = MotorState_Backward;
     motorL.state = MotorState_Forward;
     motorR.UpdatePwm(true);
     motorL.UpdatePwm(true);
 }
 
-void MotorDriver::RotateCounterClockwise()
-{
+void MotorDriver::RotateCounterClockwise() {
     motorR.state = MotorState_Forward;
     motorL.state = MotorState_Backward;
     motorR.UpdatePwm(true);
     motorL.UpdatePwm(true);
+}
+
+void MotorDriver::EnqueueMovement(MovementType type, uint8_t speed, unsigned long duration) {
+    Movement move = { type, speed, duration };
+    movementQueue.push(move);
+}
+
+void MotorDriver::ExecuteMovement(const Movement& move) {
+    motorL.SetSpeed(move.speed);
+    motorR.SetSpeed(move.speed);
+    switch (move.type) {
+        case MovementType_Forward:
+            Forward();
+            break;
+        case MovementType_Backward:
+            Backward();
+            break;
+        case MovementType_Left:
+            Left();
+            break;
+        case MovementType_Right:
+            Right();
+            break;
+        case MovementType_RotateClockwise:
+            RotateClockwise();
+            break;
+        case MovementType_RotateCounterClockwise:
+            RotateCounterClockwise();
+            break;
+        case MovementType_Stop:
+            Stop();
+            break;
+    }
+}
+
+void MotorDriver::ExecuteQueue() {
+    if (movementQueue.empty() || isMoving) {
+        return;
+    }
+
+    // Start a new movement
+    currentMovement = movementQueue.front();  // Store current movement
+    ExecuteMovement(currentMovement);         // Execute the movement
+    lastMoveTime = millis();                  // Record start time
+    isMoving = true;                          // Mark as moving
+}
+
+void MotorDriver::Process() {
+    if (isMoving) {
+        // Check if the current movement's duration has passed
+        if (millis() - lastMoveTime >= currentMovement.duration) {
+            Stop();                           // Stop the movement
+            movementQueue.pop();              // Now pop the completed movement
+            isMoving = false;                 // Reset movement state
+        }
+    }
+
+    // Start the next movement if not moving
+    if (!isMoving && !movementQueue.empty()) {
+        ExecuteQueue();
+    }
 }
 
 void MotorDriver::JoyStickControl(float x, float y)
@@ -219,7 +246,7 @@ void MotorDriver::JoyStickControl(float x, float y)
         {
             motorR.state = MotorState_Backward;
             motorL.state = MotorState_Backward;
-             motorR.UpdatePwm(true);
+            motorR.UpdatePwm(true);
             motorL.UpdatePwm(true);
        }
     }
