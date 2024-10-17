@@ -20,6 +20,12 @@ The Ax2WDRobot is a 2 Wheel-Drive platform based on espressif's ESP32 module. It
 ## Programming
 [Programming instructions](Doc/programming.md)
 
+## Establish WIFI connection
+1. After powering on, the device creates an AP with SSID name "AXTT-<MAC-Address>".
+2. Please open the WIFI settings of your device and connect to that WIFI. In case of "No internet connection" warnings, just ignore those messages and keep the WIFI connected
+3. Open your browser and enter the address http://192.168.4.1 to access the robot's web interface
+
+
 ## Troubleshooting
 *My Ax2WDRobot doesn't turn on*
 1. The battery protection circuit prevents powering on as long as there was no initial charge from USB port.
@@ -27,6 +33,6 @@ The Ax2WDRobot is a 2 Wheel-Drive platform based on espressif's ESP32 module. It
     
     
 *I can't update the firmware; Error during firmware Upload*
-1. Please make sure that the required drivers are installed on the machine. For manual installation, see https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads
+1. Please make sure that the required drivers are installed on the machine. For manual installation of the Universal drivers (VCP drivers are _not_ required), see https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads
 2. The *Ax2WDRobot* requires a charged battery and must be turned on to upload the firmware
 
