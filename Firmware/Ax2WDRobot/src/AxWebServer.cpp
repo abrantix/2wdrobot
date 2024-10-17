@@ -18,6 +18,7 @@
 #include "CameraHandler.h"
 #include "AsyncStreamResponse.h"
 #include "MotorDriver.hpp"
+#include "ObstacleAvoidance.hpp"
 #include "Style.h"
 #include "Image.h"
 #include "Icon.h"
@@ -398,10 +399,19 @@ void AxWebServer::Init()
       {
         case 1:
         AxDisplayInstance.DisplayCustom("Option 1");
+        ObstacleAvoidanceInstance.enabled = false;
         MotorDriverInstance.EnqueueMovement(MovementType_RotateClockwise, SPEED_DEFAULT, 1500);
         break;
+
         case 2:
         AxDisplayInstance.DisplayCustom("Option 2");
+        ObstacleAvoidanceInstance.enabled = true;
+        break;
+
+        case 3:
+        AxDisplayInstance.DisplayCustom("Option 3");
+        MotorDriverInstance.EnqueueMovement(MovementType_Stop, SPEED_DEFAULT, 0);
+        ObstacleAvoidanceInstance.enabled = false;
         break;
       }
     }

@@ -5,6 +5,7 @@
 #include "CameraHandler.h"
 #include "MotorDriver.hpp"
 #include "Ultrasonic.h"
+#include "ObstacleAvoidance.hpp"
 
 //
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
@@ -14,7 +15,6 @@
 
 AxWebServer axWebServer;
 AxButton axButton;
-Ultrasonic ultrasonic;
 bool alwaysFalse = false;
 unsigned long startupCompleteMillis;
 
@@ -61,7 +61,7 @@ void setup() {
 
   AxEEPROMInstance.Init();
   axButton.Init();
-  ultrasonic.Init();
+  UltrasonicInstance.Init();
   axWebServer.Init();
   AxNetworkInstance.Setup(&(EEPROMData.IPConfiguration));
   AxNetworkInstance.ConnectionChanged = OnNetworkChanged;
@@ -76,10 +76,11 @@ void loop()
   AxDisplayInstance.Process();
   axButton.Process();
   AxNetworkInstance.Process();
-  ultrasonic.Process();
+  UltrasonicInstance.Process();
   processButtons();
   CameraHandlerInstance.Process();
   MotorDriverInstance.Process();
+  ObstacleAvoidanceInstance.Process();
 }
 
 

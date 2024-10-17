@@ -1,5 +1,6 @@
 #include "MotorDriver.hpp"
 #include "Trace.h"
+#include "ObstacleAvoidance.hpp"
 
 MotorDriver MotorDriverInstance;
 
@@ -126,6 +127,11 @@ void MotorDriver::EnqueueMovement(MovementType type, uint8_t speed, unsigned lon
     movementQueue.push(move);
 }
 
+
+bool MotorDriver::IsMoving() {
+    return !movementQueue.empty() || isMoving;
+}
+
 void MotorDriver::ExecuteMovement(const Movement& move) {
     motorL.SetSpeed(move.speed);
     motorR.SetSpeed(move.speed);
@@ -201,6 +207,7 @@ void MotorDriver::JoyStickControl(float x, float y)
     //0...90°
     else if(x<0 && y<0)
     {
+        ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmYSpeed);
         motorR.SetSpeed(pwmOverallSpeed);
         if(motorR.state != MotorState_Forward || motorL.state != MotorState_Forward)
@@ -214,6 +221,7 @@ void MotorDriver::JoyStickControl(float x, float y)
     //90...180
     else if(x>0 && y<0)
     {
+        ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmOverallSpeed);
         motorR.SetSpeed(pwmYSpeed);
         if(motorR.state != MotorState_Forward || motorL.state != MotorState_Forward)
@@ -227,6 +235,7 @@ void MotorDriver::JoyStickControl(float x, float y)
     //180...270
     else if(x>0 && y>0)
     {
+        ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmOverallSpeed);
         motorR.SetSpeed(pwmYSpeed);
         if(motorR.state != MotorState_Backward || motorL.state != MotorState_Backward)
@@ -240,6 +249,7 @@ void MotorDriver::JoyStickControl(float x, float y)
     //270..360
     else if(x<0 && y>0)
     {
+        ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmYSpeed);
         motorR.SetSpeed(pwmOverallSpeed);
         if(motorR.state != MotorState_Backward || motorL.state != MotorState_Backward)

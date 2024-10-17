@@ -3,6 +3,8 @@
 #include "Trace.h"
 #include "AxDisplay.h"
 
+Ultrasonic UltrasonicInstance;
+
 unsigned long ultrasonic_rising_micros;
 unsigned long ultrasonic_falling_micros;
 bool ultrasonic_measurement_ready;
@@ -23,6 +25,7 @@ void IRAM_ATTR ultrasonic_echo_isr() {
 Ultrasonic::Ultrasonic()
 {
     lastReadMillis = 0;
+    distance = 888;
 }
 
 void Ultrasonic::Init()
@@ -30,6 +33,11 @@ void Ultrasonic::Init()
     pinMode(ULTRASONIC_TRIG_PIN, OUTPUT);
     pinMode(ULTRASONIC_ECHO_PIN, INPUT);
     attachInterrupt(digitalPinToInterrupt(ULTRASONIC_ECHO_PIN), ultrasonic_echo_isr, CHANGE);
+}
+
+float Ultrasonic::GetMeasurement()
+{
+ return distance;
 }
 
 void Ultrasonic::Process()
@@ -41,8 +49,8 @@ void Ultrasonic::Process()
         //  that is 343 / 1000000 m per microsecond
         //  that is ( 343 / 1000000  * 100) cm per microsecond
         // Note that we need to "cast" to a float here to calculate correctly
-        float distance = (ultrasonic_falling_micros - ultrasonic_rising_micros) * ((float) 343 / 1000000 * 100); 
-        distance = distance/2; // divide by 2 since that was a return trip
+        // divide by 2 since that was a return trip
+        distance = (ultrasonic_falling_micros - ultrasonic_rising_micros) * ((float) 343 / 1000000 * 100) / 2; 
         
         //TRACEPRINTF("Dst:%f cm\n", roundf(distance));
         AxDisplayInstance.UpdateDistance(roundf(distance));

@@ -88,6 +88,7 @@ public:
     void RotateClockwise();
     void RotateCounterClockwise();
     void EnqueueMovement(MovementType type, uint8_t speed, unsigned long duration);  // Queue a movement with a duration
+    bool IsMoving();
     void ExecuteQueue();
     void JoyStickControl(float x, float y);
 };
