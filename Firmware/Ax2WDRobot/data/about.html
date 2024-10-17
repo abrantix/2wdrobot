@@ -45,16 +45,16 @@
             <br/><br/>
             <div>Firmware-Version: %FIRMWARE_VERSION%</div>
             <div>MAC-Address: %MAC_ADDRESS%</div>
+            <form action='about.html'>
+              <input type='radio' id='n1' name='option' value='1'>
+              <label for='n1'>Option 1</label><br/>
+              <input type='radio' id='n2' name='option' value='2'>
+              <label for='n1'>Option 2</label><br/>
+              <br/>
+              <input type='submit' value='Execute'>
+            </form>            
           <div>
         </article>
     </main>
-  <script>
-    function EnableDisable() {
-    var wifiboxNodes = document.getElementById('wifibox').getElementsByTagName('*');
-    for (var node of wifiboxNodes) {
-      node.disabled = !document.getElementById('n2').checked;
-    }
-  }
-  </script>
 </body>
 </html>

@@ -26,8 +26,12 @@ public:
   void Init(TwoWire *twi);
   void DisableScreenSaver();
   void Display(const char* message);
+  void DisplayCustom(const char* message);
+  void DisplayBitmap(const unsigned char* bitmap, uint16_t length);
+
 
 private:
+  char customMessage[64];
   float distance;
   uint16_t currentBatteryVoltage;
   IPAddress currentDisplayIp;

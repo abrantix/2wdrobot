@@ -386,6 +386,27 @@ void AxWebServer::Init()
     request->send(response);
   });
 
+/*
+*/
+
+  webServer->on("/about.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+
+    if(request->hasParam("option"))
+    {
+      int option = request->getParam("option")->value().toInt();
+      switch(option)
+      {
+        case 1:
+        AxDisplayInstance.DisplayCustom("Option 1");
+        break;
+        case 2:
+        AxDisplayInstance.DisplayCustom("Option 2");
+        break;
+      }
+    }
+    request->send(SPIFFS, "/about.html", "text/html", false, TemplateProcessor);
+  });
+
   webServer->serveStatic("/about.html", SPIFFS, "/about.html")
     .setTemplateProcessor(TemplateProcessor);
 
@@ -473,5 +494,4 @@ void AxWebServer::OnNetworkChanged() {
     }
   }
 }
-
 

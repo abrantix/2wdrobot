@@ -4,7 +4,6 @@
 #include "CoreDefinitions.h"
 #include "FreeSansBold7pt7b.h"
 
-
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
@@ -77,6 +76,11 @@ void AxDisplay::DisableScreenSaver()
   RefreshDisplay();
 }
 
+void AxDisplay::DisplayCustom(const char* message)
+{
+  strcpy(customMessage, message);
+}
+
 void AxDisplay::Display(const char* message)
 {
   TRACELN("Display: custom message");
@@ -141,7 +145,7 @@ void AxDisplay::RefreshDisplay()
       display->print(" - No network");
     }
     NextLine();
-    
+    display->print(customMessage);
     NextLine();
     display->printf("%3gcm           %.2fV", distance, currentBatteryVoltage/1000.0);
     display->display();
@@ -152,6 +156,16 @@ void AxDisplay::RefreshDisplay()
     xSemaphoreGive(TwiMutex);
   }
 }
+
+
+ void AxDisplay::DisplayBitmap(const unsigned char* bitmap, uint16_t length)
+ {
+  digitalWrite(TWI_SEL_PIN, HIGH);
+  display->clearDisplay();
+  display->drawBitmap(0, 0, (const uint8_t*)bitmap, 128, 64, BLACK, WHITE);
+  display->display();
+  digitalWrite(TWI_SEL_PIN, LOW);
+ }
 
 void AxDisplay::UpdateBatteryVoltage(uint16_t batteryVoltage)
 {
