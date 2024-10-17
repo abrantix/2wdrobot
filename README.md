@@ -21,7 +21,7 @@ The Ax2WDRobot is a 2 Wheel-Drive platform based on espressif's ESP32 module. It
 [Programming instructions](Doc/programming.md)
 
 ## Establish WIFI connection
-1. After powering on, the device creates an AP with SSID name "AXTT-<MAC-Address>".
+1. After powering on, the device creates an AP with SSID name "AXTT-##-##-##-##-##-##".
 2. Please open the WIFI settings of your device and connect to that WIFI. In case of "No internet connection" warnings, just ignore those messages and keep the WIFI connected
 3. Open your browser and enter the address http://192.168.4.1 to access the robot's web interface
 
