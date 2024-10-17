@@ -38,7 +38,7 @@ To build, just press the *Check* icon
 ![Build](ide/build.png)
 
 To upload, first connect the *Ax2WDRobot* to the PC and turn it on. Then, press the *right arrow* icon to build and upload the firmware.
-![Build](ide/Uuload.png)
+![Build](ide/upload.png)
 
 ## Build and upload the Filesystem Image
 The firmware serves html files from an internal filesystem image which has to be initially loaded, too. This process has to be repeated in case of any change on given files in *data* folder.
