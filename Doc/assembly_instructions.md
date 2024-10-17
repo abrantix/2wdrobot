@@ -63,7 +63,7 @@ Screw on the two motor holders by using M3x10mm screws
 - 4x M3 Spring washer
 
 ### Instructions
-Screw on the two motors to the holders by using M3x25mm screws
+Screw on the two motors to the holders by using M3x25mm screws. Please ensure that the wires are both facing inwards (see the orientation of the motor solder lugs in the picture)
 
 ## Assembly Step 4
 
