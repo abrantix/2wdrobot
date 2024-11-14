@@ -424,11 +424,6 @@ void AxWebServer::Init()
   webServer->serveStatic("/", SPIFFS, "/")
     .setDefaultFile("home.html");
 
-  webServer->onNotFound([](AsyncWebServerRequest *request){
-    TRACEPRINTF("%s notfound -> redirect /\n", request->url().c_str());  
-    request->redirect("/");
-  });
-
 /*  //handling uploading ESP32 firmware file
   webServer->on("/esp32update", HTTP_POST, [](AsyncWebServerRequest *request) {
     if(Update.hasError())

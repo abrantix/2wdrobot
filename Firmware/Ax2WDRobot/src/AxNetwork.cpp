@@ -92,7 +92,9 @@ void AxNetwork::Setup(PIPCONFIG ipCfg)
 }
 
 void AxNetwork::SetupNetwork(char mode){
-    switch (mode)
+  const int wifiChannels[] = {1, 6, 11};
+
+  switch (mode)
   {
     case WIRED_NETWORK_STATIC_IP:
       //Wired network Static IP
@@ -110,7 +112,8 @@ void AxNetwork::SetupNetwork(char mode){
       TRACE("AxNetwork: Configuring WIFI SOFTAP mode for SSID ");
       TRACELN(hostname);
       WiFi.mode(WIFI_AP);
-      WiFi.softAP(hostname);
+      //Choose an arbitrary WIFI channel 1, 6 or 11
+      WiFi.softAP(hostname, emptyString, wifiChannels[random(0,2)]);
       break;
 
     case USB:
