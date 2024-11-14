@@ -15,7 +15,7 @@
 
 #define SPEED_MIN         130
 #define SPEED_DEFAULT     200
-#define SPEED_MAX         255
+#define SPEED_MAX         210
 
 enum MotorState
 {
