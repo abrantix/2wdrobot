@@ -83,7 +83,7 @@ Lock the cam connector by sliding the grey locking clip back
 ![Cam](assembly/cam1.png)
 ![Cam](assembly/cam2.png)
 
-Use the Stackable 4P long leg female header and insert it together with the Ultrasonic Sensor RCW-0001 into the *SENSOR* connector
+Before inserting the Ultrasonic Sensor RCW-0001, slightly bend the 4P connectors (see picture) and insert it into the *SENSOR* connector
 ![Cam](assembly/ultrasonic.png)
 
 Insert the OLED Display into the *DISPLAY* connector
