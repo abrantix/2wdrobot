@@ -7,7 +7,6 @@
 - 1x 18650 Battery i.e. NCR18650B
 - 1x OLED Display 0.96" SSD1306
 - 1x Ultrasonic Sensor RCW-0001
-- 1x Stackable 4P long leg female header
 - 1x Camera-Module OV2640 wide angle 120°
 - 2x TT Gear motor Dual Shaft with Wheel and Dupont wires soldered on
 - 1x Swivel caster roller ~45x28x14mm
@@ -74,7 +73,6 @@ Screw on the two motors to the holders by using M3x25mm screws. Please ensure th
 - 1x Camera-Module OV2640 wide angle 120°
 - 1x OLED Display 0.96" SSD1306
 - 1x Ultrasonic Sensor RCW-0001
-- 1x Stackable 4P long leg female header
 
 ### Instructions
 Unlock the cam connector by sliding the grey locking clip to the front edge of the mainboard. 
