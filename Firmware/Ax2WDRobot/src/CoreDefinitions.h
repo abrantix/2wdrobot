@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 #define MAJOR_VERSION 0x01
-#define MINOR_VERSION 0x07
+#define MINOR_VERSION 0x08
 
 //Store Version info into Progmem with leading magic bytes "AXTTVERSION" to allow to parse firmware version information from binary flash file
 const char VERSION_PROGMEM[] = {0x41, 0x58, 0x54, 0x54, 0x56, 0x45, 0x52, 0x53, 0x49, 0x4F, 0x4E, MAJOR_VERSION, MINOR_VERSION};

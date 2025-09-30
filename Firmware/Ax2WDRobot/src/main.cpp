@@ -6,6 +6,11 @@
 #include "MotorDriver.hpp"
 #include "Ultrasonic.h"
 #include "ObstacleAvoidance.hpp"
+#include "esp_efuse.h"
+#include "esp_efuse_table.h"
+#include "esp_log.h"
+
+#define TAG "SetFuses"
 
 //
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
@@ -136,19 +141,48 @@ void processButtons()
 //https://github.com/espressif/esp-idf/tree/release/v3.2/examples/storage/sd_card#note-about-gpio12
 bool setFuses()
 {
-  bool changed = false;
-  
-  //burning SDIO_TIEH -> sets SDIO voltage regulator to pass-thru 3.3v from VDD
-  if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_SDIO_TIEH) == 0) 
-  {changed = true; esp_efuse_reset(); REG_WRITE(EFUSE_BLK0_WDATA4_REG, EFUSE_RD_SDIO_TIEH); esp_efuse_burn_new_values();} 
+    bool changed = false;
+    esp_err_t err;
+    uint8_t value = 1;
 
-  //burning SDIO_REG -> enables SDIO voltage regulator (otherwise user must hardwire power to SDIO)
-  if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_XPD_SDIO_REG) == 0) 
-  {changed = true; esp_efuse_reset(); REG_WRITE(EFUSE_BLK0_WDATA4_REG, EFUSE_RD_XPD_SDIO_REG); esp_efuse_burn_new_values();} 
+    // Check and set SDIO_TIEH
+    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_SDIO_TIEH) == 0) 
+    {
+        changed = true;
+        err = esp_efuse_write_field_blob(ESP_EFUSE_SDIO_TIEH, &value, 1);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to set SDIO_TIEH: %s", esp_err_to_name(err));
+            return false;
+        }
+    }
 
-  //burning SDIO_FORCE -> enables SDIO_REG and SDIO_TIEH
-  if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_SDIO_FORCE) == 0) 
-  {changed = true; esp_efuse_reset(); REG_WRITE(EFUSE_BLK0_WDATA4_REG, EFUSE_RD_SDIO_FORCE); esp_efuse_burn_new_values();} 
+    // Check and set SDIO_REG
+    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_XPD_SDIO_REG) == 0) 
+    {
+        changed = true;
+        err = esp_efuse_write_field_blob(ESP_EFUSE_XPD_SDIO_REG, &value, 1);
+        if (err != ESP_OK) {
+            ESP_LOGE("SetFuses", "Failed to set SDIO_REG: %s", esp_err_to_name(err));
+            return false;
+        }
+    }
 
-  return changed;
+    // Check and set SDIO_FORCE
+    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_SDIO_FORCE) == 0) 
+    {
+        changed = true;
+        err = esp_efuse_write_field_blob(ESP_EFUSE_SDIO_FORCE, &value, 1);
+        if (err != ESP_OK) {
+            ESP_LOGE("SetFuses", "Failed to set SDIO_FORCE: %s", esp_err_to_name(err));
+            return false;
+        }
+    }
+
+    if (changed) {
+        ESP_LOGI("SetFuses", "eFuse values updated successfully.");
+    } else {
+        ESP_LOGI("SetFuses", "No changes needed for eFuses.");
+    }
+
+    return changed;
 }

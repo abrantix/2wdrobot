@@ -8,14 +8,17 @@
 #include <queue>
 
 #define PWM_Resolution  8
-#define PWM_Frequency   5000
+#define PWM_Frequency   20000
 
 #define PWM_L_Ch        2
 #define PWM_R_Ch        3
 
 #define SPEED_MIN         130
 #define SPEED_DEFAULT     200
-#define SPEED_MAX         210
+#define SPEED_MAX         240
+
+// Time (ms) for a full 0 -> 255 PWM sweep
+#define MOTOR_SLEW_FULL_SWEEP_MS 200
 
 enum MotorState
 {
@@ -45,7 +48,10 @@ struct Movement
 class Motor
 { 
 private:
-    uint8_t speed;
+    uint8_t currentSpeed;     // actually applied PWM value
+    uint8_t targetSpeed;      // requested PWM value to ramp toward
+    unsigned long lastSlewUpdate; // last millis() timestamp for slew calculations
+    bool requestedStop;           // indicates we should enter Stop state when speed reaches 0
     void SetupPwm(uint8_t pin);
 
 public:
@@ -56,8 +62,13 @@ public:
 
     Motor();
     ~Motor();
-    void SetSpeed(uint8_t speed);
+    void SetSpeed(uint8_t speed);     // request new target speed (will slew)
     void UpdatePwm(bool MotorStateChanged);
+    bool Process();                   // advance slew rate; return true if PWM changed
+    void ForceStop();                 // immediately stop (no slew) used for emergency Stop
+    void SmoothStop();                // request target speed 0 and stop when reached
+    bool IsIdle() const { return state == MotorState_Stop && currentSpeed == 0 && targetSpeed == 0; }
+    uint8_t GetTargetSpeed() const { return targetSpeed; }
 };
 
 class MotorDriver
@@ -71,6 +82,14 @@ private:
     unsigned long lastMoveTime;            // Timestamp of when the last movement started
     bool isMoving;                         // Flag indicating if a movement is in progress
 
+    // Pending direction change handling
+    bool pendingDirChange = false;
+    MotorState pendingLeftState = MotorState_Stop;
+    MotorState pendingRightState = MotorState_Stop;
+    uint8_t pendingSpeed = 0;              // target speed after direction change
+    uint8_t pendingLeftSpeed = 0;          // stored desired left speed for after reversal
+    uint8_t pendingRightSpeed = 0;         // stored desired right speed for after reversal
+
     void UpdatePwm(bool MotorStateChanged);
     void ExecuteMovement(const Movement& move);
 
@@ -79,7 +98,8 @@ public:
     ~MotorDriver();
     void Init();
     void Process();
-    void Stop();
+    void Stop();               // smooth stop
+    void EmergencyStop();      // immediate stop bypassing slew
     void SetSpeed(uint8_t speed);
     void Forward();
     void Backward();
@@ -87,6 +107,7 @@ public:
     void Right();
     void RotateClockwise();
     void RotateCounterClockwise();
+    void RequestDirection(MotorState left, MotorState right, uint8_t speed); // smooth zero-cross direction change
     void EnqueueMovement(MovementType type, uint8_t speed, unsigned long duration);  // Queue a movement with a duration
     bool IsMoving();
     void ExecuteQueue();

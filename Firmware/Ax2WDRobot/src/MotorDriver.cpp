@@ -4,7 +4,7 @@
 
 MotorDriver MotorDriverInstance;
 
-Motor::Motor() {}
+Motor::Motor() : currentSpeed(0), targetSpeed(0), lastSlewUpdate(0), requestedStop(false) {}
 Motor::~Motor() {}
 
 void Motor::SetupPwm(uint8_t pin) {
@@ -13,8 +13,20 @@ void Motor::SetupPwm(uint8_t pin) {
 }
 
 void Motor::SetSpeed(uint8_t speed) {
-    this->speed = speed;
-    UpdatePwm(false);
+    if (speed > 255) speed = 255; // guard
+    targetSpeed = speed;
+}
+
+void Motor::ForceStop() {
+    targetSpeed = 0;
+    currentSpeed = 0;
+    ledcWrite(pwmChannel, 0);
+    requestedStop = false;
+}
+
+void Motor::SmoothStop() {
+    requestedStop = true;
+    targetSpeed = 0;
 }
 
 void Motor::UpdatePwm(bool MotorStateChanged) {
@@ -22,13 +34,13 @@ void Motor::UpdatePwm(bool MotorStateChanged) {
         switch (state) {
             case MotorState_Forward:
                 SetupPwm(pinA);
-                ledcWrite(pwmChannel, speed);
+                ledcWrite(pwmChannel, currentSpeed);
                 pinMode(pinB, OUTPUT);
                 digitalWrite(pinB, 0);
                 break;
             case MotorState_Backward:
                 SetupPwm(pinB);
-                ledcWrite(pwmChannel, speed);
+                ledcWrite(pwmChannel, currentSpeed);
                 pinMode(pinA, OUTPUT);
                 digitalWrite(pinA, 0);
                 break;
@@ -43,9 +55,71 @@ void Motor::UpdatePwm(bool MotorStateChanged) {
         }
     } else {
         if (state != MotorState_Stop) {
-            ledcWrite(pwmChannel, speed);
+            ledcWrite(pwmChannel, currentSpeed);
         }
     }
+}
+
+bool Motor::Process() {
+    // If already in Stop state just ensure PWM zero then exit
+    if (state == MotorState_Stop) {
+        // We still might be slewing down toward zero before switching state, but once here ensure all zeroed
+        if (currentSpeed != 0) {
+            currentSpeed = 0;
+            ledcWrite(pwmChannel, 0);
+            return true;
+        }
+        return false;
+    }
+
+    if (currentSpeed == targetSpeed) {
+        // If we were requesting a stop and have reached zero, now set the state to Stop and deassert pins
+        if (requestedStop && targetSpeed == 0 && currentSpeed == 0) {
+            state = MotorState_Stop;
+            // ensure both pins low
+            pinMode(pinA, OUTPUT); digitalWrite(pinA, 0);
+            pinMode(pinB, OUTPUT); digitalWrite(pinB, 0);
+            requestedStop = false;
+            return true;
+        }
+        return false; // nothing else changed
+    }
+
+    unsigned long now = millis();
+    if (lastSlewUpdate == 0) lastSlewUpdate = now;
+    unsigned long dt = now - lastSlewUpdate;
+    if (dt == 0) return false;
+
+    // compute max delta per ms so that 0->255 takes MOTOR_SLEW_FULL_SWEEP_MS
+    // delta per ms = 255 / MOTOR_SLEW_FULL_SWEEP_MS
+    const float deltaPerMs = 255.0f / (float)MOTOR_SLEW_FULL_SWEEP_MS;
+    int maxStep = (int)roundf(deltaPerMs * dt);
+    if (maxStep < 1) maxStep = 1; // ensure progress
+
+    if (currentSpeed < targetSpeed) {
+        int newSpeed = currentSpeed + maxStep;
+        if (newSpeed > targetSpeed) newSpeed = targetSpeed;
+        currentSpeed = (uint8_t)newSpeed;
+    } else {
+        int newSpeed = currentSpeed - maxStep;
+        if (newSpeed < targetSpeed) newSpeed = targetSpeed;
+        currentSpeed = (uint8_t)newSpeed;
+    }
+    lastSlewUpdate = now;
+
+    // apply updated PWM value if motor is active
+    if (state != MotorState_Stop) {
+        ledcWrite(pwmChannel, currentSpeed);
+    }
+
+    // If we have reached target and requestedStop was set, convert to Stop (handled next loop or now if reached zero)
+    if (requestedStop && currentSpeed == 0) {
+        state = MotorState_Stop;
+        pinMode(pinA, OUTPUT); digitalWrite(pinA, 0);
+        pinMode(pinB, OUTPUT); digitalWrite(pinB, 0);
+        requestedStop = false;
+    }
+    return true;
 }
 
 MotorDriver::MotorDriver() : isMoving(false), lastMoveTime(0) {
@@ -65,61 +139,79 @@ void MotorDriver::Init() {
 }
 
 void MotorDriver::Stop() {
+    // Request a smooth ramp down; keep current state (direction) until motors reach 0 then they change to Stop internally
+    motorL.SmoothStop();
+    motorR.SmoothStop();
+}
+
+void MotorDriver::EmergencyStop() {
     motorR.state = MotorState_Stop;
     motorL.state = MotorState_Stop;
-    motorL.SetSpeed(0);
-    motorR.SetSpeed(0);
-    motorR.UpdatePwm(true);
+    motorL.ForceStop();
+    motorR.ForceStop();
+    motorR.UpdatePwm(true); // ensures direction pins are low
     motorL.UpdatePwm(true);
 }
 
 void MotorDriver::SetSpeed(uint8_t speed) {
     motorR.SetSpeed(speed);
     motorL.SetSpeed(speed);
-    motorR.UpdatePwm(false);
-    motorL.UpdatePwm(false);
 }
 
 void MotorDriver::Forward() {
-    motorR.state = MotorState_Forward;
-    motorL.state = MotorState_Forward;
-    motorR.UpdatePwm(true);
-    motorL.UpdatePwm(true);
+    RequestDirection(MotorState_Forward, MotorState_Forward, 0);
 }
 
 void MotorDriver::Backward() {
-    motorR.state = MotorState_Backward;
-    motorL.state = MotorState_Backward;
-    motorR.UpdatePwm(true);
-    motorL.UpdatePwm(true);
+    RequestDirection(MotorState_Backward, MotorState_Backward, 0);
 }
 
 void MotorDriver::Left() {
-    motorR.state = MotorState_Forward;
-    motorL.state = MotorState_Stop;
-    motorR.UpdatePwm(true);
-    motorL.UpdatePwm(true);
+    RequestDirection(MotorState_Forward, MotorState_Stop, 0);
 }
 
 void MotorDriver::Right() {
-    motorR.state = MotorState_Stop;
-    motorL.state = MotorState_Forward;
-    motorR.UpdatePwm(true);
-    motorL.UpdatePwm(true);
+    RequestDirection(MotorState_Stop, MotorState_Forward, 0);
 }
 
 void MotorDriver::RotateClockwise() {
-    motorR.state = MotorState_Backward;
-    motorL.state = MotorState_Forward;
-    motorR.UpdatePwm(true);
-    motorL.UpdatePwm(true);
+    RequestDirection(MotorState_Backward, MotorState_Forward, 0);
 }
 
 void MotorDriver::RotateCounterClockwise() {
-    motorR.state = MotorState_Forward;
-    motorL.state = MotorState_Backward;
-    motorR.UpdatePwm(true);
-    motorL.UpdatePwm(true);
+    RequestDirection(MotorState_Forward, MotorState_Backward, 0);
+}
+
+void MotorDriver::RequestDirection(MotorState left, MotorState right, uint8_t speed) {
+    // speed parameter currently unused; using existing motor target speeds
+    (void)speed;
+
+    // If no change needed just ensure PWM update
+    if (motorL.state == left && motorR.state == right) {
+        return; // ongoing slew covers speed adjustments
+    }
+
+    // If either motor is moving (not idle) we request a smooth stop first
+    bool reversalNeeded = (motorL.state != left) || (motorR.state != right);
+    if (reversalNeeded) {
+        if (!pendingDirChange) {
+            pendingDirChange = true;
+            pendingLeftState = left;
+            pendingRightState = right;
+            // store the speeds we want after transition (current targets at request time)
+            pendingLeftSpeed = motorL.GetTargetSpeed();
+            pendingRightSpeed = motorR.GetTargetSpeed();
+        } else {
+            // overwrite with the latest requested direction; last command wins
+            pendingLeftState = left;
+            pendingRightState = right;
+            pendingLeftSpeed = motorL.GetTargetSpeed();
+            pendingRightSpeed = motorR.GetTargetSpeed();
+        }
+        // Initiate smooth stop (it will ramp to zero)
+        motorL.SmoothStop();
+        motorR.SmoothStop();
+    }
 }
 
 void MotorDriver::EnqueueMovement(MovementType type, uint8_t speed, unsigned long duration) {
@@ -173,10 +265,26 @@ void MotorDriver::ExecuteQueue() {
 }
 
 void MotorDriver::Process() {
+    // advance slew for each motor first
+    bool changedL = motorL.Process();
+    bool changedR = motorR.Process();
+    (void)changedL; (void)changedR; // reserved for future diagnostics
+
+    // If we have a pending direction change and both motors are idle at zero speed, apply it
+    if (pendingDirChange && motorL.IsIdle() && motorR.IsIdle()) {
+        motorL.state = pendingLeftState;
+        motorR.state = pendingRightState;
+        motorL.UpdatePwm(true);
+        motorR.UpdatePwm(true);
+        // restore speeds (will ramp up after zero-cross)
+        motorL.SetSpeed(pendingLeftSpeed);
+        motorR.SetSpeed(pendingRightSpeed);
+        pendingDirChange = false;
+    }
+
     if (isMoving) {
         // Check if the current movement's duration has passed
         if (millis() - lastMoveTime >= currentMovement.duration) {
-            Stop();                           // Stop the movement
             movementQueue.pop();              // Now pop the completed movement
             isMoving = false;                 // Reset movement state
         }
@@ -210,12 +318,8 @@ void MotorDriver::JoyStickControl(float x, float y)
         ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmYSpeed);
         motorR.SetSpeed(pwmOverallSpeed);
-        if(motorR.state != MotorState_Forward || motorL.state != MotorState_Forward)
-        {
-            motorR.state = MotorState_Forward;
-            motorL.state = MotorState_Forward;
-            motorR.UpdatePwm(true);
-            motorL.UpdatePwm(true);
+        if(motorR.state != MotorState_Forward || motorL.state != MotorState_Forward) {
+            RequestDirection(MotorState_Forward, MotorState_Forward, 0);
         }
     }
     //90...180
@@ -224,12 +328,8 @@ void MotorDriver::JoyStickControl(float x, float y)
         ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmOverallSpeed);
         motorR.SetSpeed(pwmYSpeed);
-        if(motorR.state != MotorState_Forward || motorL.state != MotorState_Forward)
-        {
-            motorR.state = MotorState_Forward;
-            motorL.state = MotorState_Forward;
-            motorR.UpdatePwm(true);
-            motorL.UpdatePwm(true);
+        if(motorR.state != MotorState_Forward || motorL.state != MotorState_Forward) {
+            RequestDirection(MotorState_Forward, MotorState_Forward, 0);
         }
     }
     //180...270
@@ -238,12 +338,8 @@ void MotorDriver::JoyStickControl(float x, float y)
         ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmOverallSpeed);
         motorR.SetSpeed(pwmYSpeed);
-        if(motorR.state != MotorState_Backward || motorL.state != MotorState_Backward)
-        {
-            motorR.state = MotorState_Backward;
-            motorL.state = MotorState_Backward;
-            motorR.UpdatePwm(true);
-            motorL.UpdatePwm(true);
+        if(motorR.state != MotorState_Backward || motorL.state != MotorState_Backward) {
+            RequestDirection(MotorState_Backward, MotorState_Backward, 0);
         }
     }
     //270..360
@@ -252,12 +348,8 @@ void MotorDriver::JoyStickControl(float x, float y)
         ObstacleAvoidanceInstance.enabled = false;
         motorL.SetSpeed(pwmYSpeed);
         motorR.SetSpeed(pwmOverallSpeed);
-        if(motorR.state != MotorState_Backward || motorL.state != MotorState_Backward)
-        {
-            motorR.state = MotorState_Backward;
-            motorL.state = MotorState_Backward;
-            motorR.UpdatePwm(true);
-            motorL.UpdatePwm(true);
+        if(motorR.state != MotorState_Backward || motorL.state != MotorState_Backward) {
+            RequestDirection(MotorState_Backward, MotorState_Backward, 0);
        }
     }
     else

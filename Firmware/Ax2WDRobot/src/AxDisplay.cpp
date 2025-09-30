@@ -147,7 +147,7 @@ void AxDisplay::RefreshDisplay()
     NextLine();
     display->print(customMessage);
     NextLine();
-    display->printf("%3gcm           %.2fV", distance, currentBatteryVoltage/1000.0);
+    display->printf("%4gcm          %.2fV", distance, currentBatteryVoltage/1000.0);
     display->display();
     
     lastShowmillis = millis();
