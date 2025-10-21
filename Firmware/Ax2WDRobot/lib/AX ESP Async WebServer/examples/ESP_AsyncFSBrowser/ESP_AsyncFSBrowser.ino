@@ -3,6 +3,7 @@
 #include <FS.h>
 #include <SPIFFS.h>
 #include <ESPmDNS.h>
+#include "esp_wifi.h"
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #elif defined(ESP8266)
@@ -101,6 +102,8 @@ void setup(){
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   WiFi.mode(WIFI_AP_STA);
+  esp_wifi_set_max_tx_power(78);
+  WiFi.setSleep(false);
   WiFi.softAP(hostName);
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
