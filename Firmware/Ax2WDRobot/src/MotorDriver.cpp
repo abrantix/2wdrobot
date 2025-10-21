@@ -4,12 +4,21 @@
 
 MotorDriver MotorDriverInstance;
 
-Motor::Motor() : currentSpeed(0), targetSpeed(0), lastSlewUpdate(0), requestedStop(false) {}
+Motor::Motor() : currentSpeed(0), targetSpeed(0), lastSlewUpdate(0), requestedStop(false), pwmConfigured(false) {
+    state = MotorState_Stop; // explicit init
+}
 Motor::~Motor() {}
 
+void Motor::InitPwmChannel() {
+    if (!pwmConfigured) {
+        ledcSetup(pwmChannel, PWM_Frequency, PWM_Resolution); // configure frequency & resolution once
+        pwmConfigured = true;
+    }
+}
+
 void Motor::SetupPwm(uint8_t pin) {
-    ledcAttachPin(pin, pwmChannel);
-    ledcSetup(pwmChannel, PWM_Frequency, PWM_Resolution);
+    InitPwmChannel();
+    ledcAttachPin(pin, pwmChannel); // (re)attach the active direction pin
 }
 
 void Motor::SetSpeed(uint8_t speed) {
@@ -20,7 +29,9 @@ void Motor::SetSpeed(uint8_t speed) {
 void Motor::ForceStop() {
     targetSpeed = 0;
     currentSpeed = 0;
-    ledcWrite(pwmChannel, 0);
+    if (pwmConfigured) {
+        ledcWrite(pwmChannel, 0);
+    }
     requestedStop = false;
 }
 
@@ -63,10 +74,9 @@ void Motor::UpdatePwm(bool MotorStateChanged) {
 bool Motor::Process() {
     // If already in Stop state just ensure PWM zero then exit
     if (state == MotorState_Stop) {
-        // We still might be slewing down toward zero before switching state, but once here ensure all zeroed
         if (currentSpeed != 0) {
             currentSpeed = 0;
-            ledcWrite(pwmChannel, 0);
+            if (pwmConfigured) ledcWrite(pwmChannel, 0);
             return true;
         }
         return false;
@@ -108,7 +118,7 @@ bool Motor::Process() {
     lastSlewUpdate = now;
 
     // apply updated PWM value if motor is active
-    if (state != MotorState_Stop) {
+    if (state != MotorState_Stop && pwmConfigured) {
         ledcWrite(pwmChannel, currentSpeed);
     }
 
@@ -134,6 +144,9 @@ MotorDriver::MotorDriver() : isMoving(false), lastMoveTime(0) {
 MotorDriver::~MotorDriver() {}
 
 void MotorDriver::Init() {
+    // Pre-configure LEDC channels before any writes to avoid ledc_get_duty() errors
+    motorL.InitPwmChannel();
+    motorR.InitPwmChannel();
     Stop();
     SetSpeed(SPEED_DEFAULT);
 }
@@ -294,6 +307,9 @@ void MotorDriver::Process() {
     if (!isMoving && !movementQueue.empty()) {
         ExecuteQueue();
     }
+
+    // Yield to feed watchdog in case Process is called in a tight loop with heavy async activity
+    delay(1);
 }
 
 void MotorDriver::JoyStickControl(float x, float y)

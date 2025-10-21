@@ -112,6 +112,8 @@ void AxNetwork::SetupNetwork(char mode){
       TRACE("AxNetwork: Configuring WIFI SOFTAP mode for SSID ");
       TRACELN(hostname);
       WiFi.mode(WIFI_AP);
+      esp_wifi_set_max_tx_power(78);
+      WiFi.setSleep(false);
       //Choose an arbitrary WIFI channel 1, 6 or 11
       WiFi.softAP(hostname, emptyString, wifiChannels[random(0,2)]);
       break;

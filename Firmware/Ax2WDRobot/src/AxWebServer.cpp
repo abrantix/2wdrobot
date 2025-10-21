@@ -105,15 +105,31 @@ static void capture_handler(AsyncWebServerRequest *request)
     TRACEPRINTF("JPG: %uB %ums\n", (uint32_t)(len), (uint32_t)((fr_end - fr_start) / 1000));
 }
 
+// Track single active JPEG stream (close previous when new one connects)
+static AsyncClient* activeStreamClient = nullptr;
+static AsyncJpegStreamResponse* activeStreamResponse = nullptr;
 static void streamJpg(AsyncWebServerRequest *request){
-    AsyncJpegStreamResponse *response = new AsyncJpegStreamResponse();
-    if(!response){
-        request->send(501);
-        return;
+  // Gracefully terminate previous stream by ending its client without forced close
+  if(activeStreamClient){
+    // initiate half-close if connected; AsyncWebServer will cleanup request & response
+    if(activeStreamClient->connected()) {
+      activeStreamClient->close(); // normal close (no "true" forced abort)
     }
-    response->addHeader("Access-Control-Allow-Origin", "*");
-    response->addHeader("X-Framerate", "60");
-    request->send(response);
+    activeStreamClient = nullptr;
+    activeStreamResponse = nullptr;
+  }
+  AsyncJpegStreamResponse *response = new AsyncJpegStreamResponse(66); // ~15 FPS pacing
+  if(!response){
+    request->send(501);
+    return;
+  }
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  response->addHeader("X-Framerate", "15");
+  // Capture client and response; ensure pointers cleared on disconnect
+  request->onDisconnect([](){ activeStreamClient = nullptr; activeStreamResponse = nullptr; });
+  activeStreamClient = request->client();
+  activeStreamResponse = response;
+  request->send(response);
 }
 
 /*********************************************************************************************/

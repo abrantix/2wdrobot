@@ -103,7 +103,7 @@ class AsyncJpegStreamResponse: public AsyncAbstractResponse {
         uint8_t * _jpg_buf;
         uint64_t lastAsyncRequest;
     public:
-        AsyncJpegStreamResponse(){
+        AsyncJpegStreamResponse(uint32_t frameIntervalMs = 66){ // default ~15 FPS pacing
             _callback = nullptr;
             _code = 200;
             _contentLength = 0;
@@ -114,6 +114,7 @@ class AsyncJpegStreamResponse: public AsyncAbstractResponse {
             _jpg_buf_len = 0;
             _jpg_buf = NULL;
             lastAsyncRequest = 0;
+            _frameIntervalMs = frameIntervalMs;
             memset(&_frame, 0, sizeof(camera_frame_t));
         }
         ~AsyncJpegStreamResponse(){
@@ -140,6 +141,15 @@ class AsyncJpegStreamResponse: public AsyncAbstractResponse {
         _ack(request, 0, 0);
         }        
         size_t _content(uint8_t *buffer, size_t maxLen, size_t index){
+            // Pace frames: ensure minimum interval between completed frames
+            if(_frame.fb == NULL && lastAsyncRequest != 0){
+                uint64_t nowUs = (uint64_t)micros();
+                uint64_t elapsedMs = (nowUs - lastAsyncRequest) / 1000ULL;
+                if(elapsedMs < _frameIntervalMs){
+                    // Ask async web server to try again later without blocking
+                    return RESPONSE_TRY_AGAIN;
+                }
+            }
             if(!_frame.fb || _frame.index == _jpg_buf_len){
                 if(index && _frame.fb){
                     uint64_t end = (uint64_t)micros();
@@ -214,6 +224,8 @@ class AsyncJpegStreamResponse: public AsyncAbstractResponse {
 
             return maxLen;
         }
+    private:
+        uint32_t _frameIntervalMs; // pacing between frames
 };
 
 #endif

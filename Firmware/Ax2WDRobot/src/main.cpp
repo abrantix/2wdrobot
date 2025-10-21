@@ -91,8 +91,8 @@ void loop()
 
 void OnNetworkChanged()
 {
-  TRACELN("Restarting Webserver");
-  axWebServer.OnNetworkChanged();
+  TRACELN("Network change detected");
+ // axWebServer.OnNetworkChanged();
 }
 
 void factoryReset()

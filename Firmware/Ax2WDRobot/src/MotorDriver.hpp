@@ -53,6 +53,7 @@ private:
     unsigned long lastSlewUpdate; // last millis() timestamp for slew calculations
     bool requestedStop;           // indicates we should enter Stop state when speed reaches 0
     void SetupPwm(uint8_t pin);
+    bool pwmConfigured;           // true once ledcSetup executed for this motor's channel
 
 public:
     MotorState state;
@@ -69,6 +70,7 @@ public:
     void SmoothStop();                // request target speed 0 and stop when reached
     bool IsIdle() const { return state == MotorState_Stop && currentSpeed == 0 && targetSpeed == 0; }
     uint8_t GetTargetSpeed() const { return targetSpeed; }
+    void InitPwmChannel();            // ensure channel configured once before writes
 };
 
 class MotorDriver
