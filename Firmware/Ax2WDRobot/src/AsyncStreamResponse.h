@@ -6,6 +6,7 @@
 #include "Arduino.h"
 #include "esp_camera.h"
 #include "ESPAsyncWebServer.h"
+#include "CameraHandler.h"
 
 typedef struct {
         camera_fb_t * fb;
@@ -174,7 +175,8 @@ class AsyncJpegStreamResponse: public AsyncAbstractResponse {
                 _frame.fb = esp_camera_fb_get();
                 if (_frame.fb == NULL) {
                     log_e("Camera frame failed");
-                    return 0;
+                    // Backoff: return TRY_AGAIN so server can reschedule without tearing stream
+                    return RESPONSE_TRY_AGAIN;
                 }
 
                 if(_frame.fb->format != PIXFORMAT_JPEG){

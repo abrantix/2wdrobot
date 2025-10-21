@@ -35,19 +35,23 @@ void CameraHandler::Init()
   config.pin_sccb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 18000000;
+  // Start with a conservative XCLK; adjust for problematic OV3660 modules.
+  config.xclk_freq_hz = 12000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+  // Use LATEST to avoid blocking waits when buffers fill; improves responsiveness.
+  config.grab_mode = CAMERA_GRAB_LATEST;
   
   // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
   //                      for larger pre-allocated frame buffer.
+  // Native QVGA target for reliability (avoid large initial buffer allocations + downscale).
+  // Quality set moderately to reduce encode time on flaky modules.
   if(psramFound()){
-    config.frame_size = FRAMESIZE_UXGA;
-    config.jpeg_quality = 9;
-    config.fb_count = 2;
+    config.frame_size = FRAMESIZE_VGA;
+    config.jpeg_quality = 12; // moderate quality
+    config.fb_count = 2; // keep double buffering if PSRAM present
   } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
+    config.frame_size = FRAMESIZE_VGA;
+    config.jpeg_quality = 15; // slightly lower quality for speed
     config.fb_count = 1;
   }
 
@@ -75,10 +79,10 @@ void CameraHandler::Init()
     sensor->set_hmirror(sensor, 0); 
     break;
     case OV3660_PID:
-    sensor->set_vflip(sensor, 1); // flip it back
-    sensor->set_brightness(sensor, 1); // up the brightness just a bit
-    sensor->set_saturation(sensor, -2); // lower the saturation
-    break;
+      sensor->set_vflip(sensor, 1); // flip it back
+      sensor->set_brightness(sensor, 1); // up the brightness just a bit
+      sensor->set_saturation(sensor, -2); // lower the saturation
+      break;
 
     case OV5640_PID:
     sensor->set_vflip(sensor, 1); // flip it back
@@ -87,8 +91,7 @@ void CameraHandler::Init()
     default:
     break;
   }
-  // drop down frame size for higher initial frame rate
-  sensor->set_framesize(sensor, FRAMESIZE_QVGA);
+  sensor->set_framesize(sensor, FRAMESIZE_VGA);
 
 #if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
   sensor->set_vflip(sensor, 1);
@@ -128,3 +131,4 @@ bool CameraHandler::WaitForRegisterValue(int reg, int mask, int expectedValue, u
 
   return success;
 }
+

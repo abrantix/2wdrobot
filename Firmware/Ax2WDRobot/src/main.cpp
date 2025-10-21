@@ -92,7 +92,7 @@ void loop()
 void OnNetworkChanged()
 {
   TRACELN("Network change detected");
- // axWebServer.OnNetworkChanged();
+  axWebServer.OnNetworkChanged();
 }
 
 void factoryReset()
