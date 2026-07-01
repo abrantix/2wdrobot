@@ -39,16 +39,3 @@ To build, just press the *Check* icon
 
 To upload, first connect the *Ax2WDRobot* to the PC and turn it on. Then, press the *right arrow* icon to build and upload the firmware.
 ![Build](ide/upload.png)
-
-## Build and upload the Filesystem Image
-The firmware serves html files from an internal filesystem image which has to be initially loaded, too. This process has to be repeated in case of any change on given files in *data* folder.
-
-1. Click on the platformio icon on the left toolbar
-2. Under Project Tasks in the left window, expand *ax2wdrobot->Platform*
-3. Execute *Build Filesystem Image*
-4. If not already done, connect the *Ax2WDRobot* to the PC and turn it on.
-5. Execute *Upload Filesystem Image*
-
-![Filesystem upload](ide/filesystem_upload.png)
-
-For step 4, please ensure that no serial monitor windows are active - otherwise, the filesystem image upload will fail.
