@@ -5,7 +5,6 @@
 
 
 #include <Update.h>
-#include <SPIFFS.h>
 #include "AxWebServer.h"
 #include "Trace.h"
 #include "CoreDefinitions.h"
@@ -14,6 +13,7 @@
 #include "WiFi.h"
 #include "Font.h"
 #include "WebPages.h"
+#include "InlinePages.h"
 #include "AxEEPROM.h"
 #include "CameraHandler.h"
 #include "AsyncStreamResponse.h"
@@ -203,16 +203,28 @@ static bool AxWebServer_ProcessRobotControlPage(AsyncWebServerRequest *request)
   return withParam;
 }
 
+static String processTemplate(const char* tmpl)
+{
+  String html(tmpl);
+  char buf[30];
+  html.replace("%WEB_TCP_PORT%", String(EEPROMData.WebIfPort));
+  html.replace("%AP_SSID%", String(AxNetworkInstance.GetHostname()));
+  snprintf(buf, sizeof(buf), "V%02d.%02d", MAJOR_VERSION, MINOR_VERSION);
+  html.replace("%FIRMWARE_VERSION%", buf);
+  const char* mac = AxNetworkInstance.GetBaseMacAddress();
+  snprintf(buf, sizeof(buf), "%02X-%02X-%02X-%02X-%02X-%02X",
+    (uint8_t)mac[0], (uint8_t)mac[1], (uint8_t)mac[2],
+    (uint8_t)mac[3], (uint8_t)mac[4], (uint8_t)mac[5]);
+  html.replace("%MAC_ADDRESS%", buf);
+  return html;
+}
+
 static String TemplateProcessor(const String& var)
 {
   if(var == "WEB_TCP_PORT")
     return String(EEPROMData.WebIfPort);
-  if(var == "NETWORKTYPE_CHECKED_2")
-    return EEPROMData.IPConfiguration.Mode == 2 ? String("checked") : String();
-  if(var == "NETWORKTYPE_CHECKED_3")
-    return EEPROMData.IPConfiguration.Mode == 3 ? String("checked") : String();
-  if(var == "SSID")
-    return EEPROMData.IPConfiguration.Mode == 2 ? String(EEPROMData.IPConfiguration.SSID) : String();
+  if(var == "AP_SSID")
+    return String(AxNetworkInstance.GetHostname());
   if(var == "FIRMWARE_VERSION")
     {
       char buffer[30];
@@ -231,73 +243,20 @@ static String TemplateProcessor(const String& var)
 
 static bool AxWebServer_ProcessNetworkConfigPage(AsyncWebServerRequest *request)
 {
-  AsyncWebServerResponse *response;
-  IPCONFIG newIpConfig;
-
-  bool success = true;
-  if(request->hasParam("networktype"))
+  if (request->hasParam("Port"))
   {
-    if(request->hasParam("Port") && request->hasParam("networktype"))
-    {
-      EEPROMData.WebIfPort = request->getParam("Port")->value().toInt();
-      AxEEPROMInstance.SaveEEPROM();
-      int networkType = request->getParam("networktype")->value().toInt();
-      newIpConfig.Mode = (char)networkType;
-      
-      switch(networkType)
-      {
-        case 2:
-        //Wifi STA
-        if(request->hasParam("SSID") && request->hasParam("Password"))
-        {
-          request->getParam("SSID")->value().toCharArray(newIpConfig.SSID, 63);
-          request->getParam("Password")->value().toCharArray(newIpConfig.WifiPassword, 63);
-          if(strlen(newIpConfig.SSID) == 0 || strlen(newIpConfig.WifiPassword) == 0)
-          {
-            TRACELN("Error: SSID or password is empty");
-            success = false;
-          }
-        }
-        else
-        {
-          success = false;
-        }
-        break;
-        
-        case 3:
-        //Wifi softAP
-        break;
-
-        default:
-        success = false;
-        break;
-      }
-    }
-    else
-    {
-      success = false;
-    }
-
-    if(success)
-    {
-      response = request->beginResponse(200, "text/plain", "Network Configuration changed");
-      response->addHeader("Connection", "close");
-      request->send(response);
-      AxNetworkInstance.PeristNewIpConfig(&newIpConfig);
-    }
-    else
-    {
-      response = request->beginResponse(400, "text/plain", "ERROR: Invalid arguments");
-      response->addHeader("Connection", "close");
-      request->send(response);
-    }
-  }
-  else
-  {
-    request->send(SPIFFS, "/networkconfig.html", "text/html", false, TemplateProcessor);
+    EEPROMData.WebIfPort = (uint16_t)request->getParam("Port")->value().toInt();
+    AxEEPROMInstance.SaveEEPROM();
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Settings saved. Rebooting...");
+    response->addHeader("Connection", "close");
+    request->send(response);
+    delay(500);
+    ESP.restart();
+    return true;
   }
 
-  return success;
+  request->send(200, "text/html", processTemplate(NetworkConfigPage));
+  return true;
 }
 
 static AsyncWebServer *webServer;
@@ -357,7 +316,6 @@ static void handleFPUpload(AsyncWebServerRequest *request, String filename, size
 
 void AxWebServer::Init()
 {
-  SPIFFS.begin(true);
   TRACEPRINTF("Setting up WebServer on Port %u\n", EEPROMData.WebIfPort);
   webServer = new AsyncWebServer(EEPROMData.WebIfPort);
 
@@ -373,72 +331,76 @@ void AxWebServer::Init()
       });
   }
 
+  // --- Inline static assets ---
+  webServer->on("/style/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/css", Style_Css);
+  });
+  webServer->on("/image/ax_claim_white.png", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "image/png", abranitx_white, sizeof(abranitx_white));
+  });
+  webServer->on("/icon/apple-touch-icon.png", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "image/png", apple_touch_icon, sizeof(apple_touch_icon));
+  });
+  webServer->on("/icon/favicon-32x32.png", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "image/png", favicon_32x32, sizeof(favicon_32x32));
+  });
+  webServer->on("/icon/favicon-16x16.png", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "image/png", favicon_16x16, sizeof(favicon_16x16));
+  });
+  webServer->on("/fonts/WF-035979-011333-000062.woff2", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "font/woff2", font_1, font_1_len);
+  });
+
+  // --- Camera endpoints ---
   webServer->on("/capture", HTTP_GET, [](AsyncWebServerRequest *request) {
       capture_handler(request);
   });
-
   webServer->on("/stream", HTTP_GET, [](AsyncWebServerRequest *request) {
       streamJpg(request);
   });
 
+  // --- Robot control API ---
+  webServer->on("/robot-control", HTTP_GET, [](AsyncWebServerRequest *request) {
+    TRACELN("GET /robot-control");
+    AxWebServer_ProcessRobotControlPage(request);
+    request->send(200, "text/plain", "OK");
+  });
+
+  // --- HTML pages (inline, no filesystem) ---
   webServer->on("/networkconfig.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     TRACELN("GET /networkconfig.html");
     AxWebServer_ProcessNetworkConfigPage(request);
   });
 
-/*
-  webServer->on("/esp32update", HTTP_GET, [](AsyncWebServerRequest *request) {
-    TRACELN("GET /esp32update");
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", AxOTAWebServerPage);
-    response->addHeader("Connection", "close");
-    request->send(response);
-  });*/
-
-  webServer->on("/robot-control", HTTP_GET, [](AsyncWebServerRequest *request) {
-    TRACELN("GET /robot-control");
-    AsyncWebServerResponse *response;
-    bool withParam = AxWebServer_ProcessRobotControlPage(request);
-    response = request->beginResponse(200, "text/html", "OK");
-    response->addHeader("Connection", "close");
-    request->send(response);
-  });
-
-/*
-*/
-
   webServer->on("/about.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-
     if(request->hasParam("option"))
     {
       int option = request->getParam("option")->value().toInt();
       switch(option)
       {
         case 1:
-        AxDisplayInstance.DisplayCustom("Option 1");
-        ObstacleAvoidanceInstance.enabled = false;
-        MotorDriverInstance.EnqueueMovement(MovementType_RotateClockwise, SPEED_DEFAULT, 1500);
-        break;
-
+          AxDisplayInstance.DisplayCustom("Option 1");
+          ObstacleAvoidanceInstance.enabled = false;
+          MotorDriverInstance.EnqueueMovement(MovementType_RotateClockwise, SPEED_DEFAULT, 1500);
+          break;
         case 2:
-        AxDisplayInstance.DisplayCustom("Option 2");
-        ObstacleAvoidanceInstance.enabled = true;
-        break;
-
+          AxDisplayInstance.DisplayCustom("Option 2");
+          ObstacleAvoidanceInstance.enabled = true;
+          break;
         case 3:
-        AxDisplayInstance.DisplayCustom("Option 3");
-        MotorDriverInstance.EnqueueMovement(MovementType_Stop, SPEED_DEFAULT, 0);
-        ObstacleAvoidanceInstance.enabled = false;
-        break;
+          AxDisplayInstance.DisplayCustom("Option 3");
+          MotorDriverInstance.EnqueueMovement(MovementType_Stop, SPEED_DEFAULT, 0);
+          ObstacleAvoidanceInstance.enabled = false;
+          break;
       }
     }
-    request->send(SPIFFS, "/about.html", "text/html", false, TemplateProcessor);
+    request->send(200, "text/html", processTemplate(AboutPage2));
   });
 
-  webServer->serveStatic("/about.html", SPIFFS, "/about.html")
-    .setTemplateProcessor(TemplateProcessor);
-
-  webServer->serveStatic("/", SPIFFS, "/")
-    .setDefaultFile("home.html");
+  webServer->onNotFound([](AsyncWebServerRequest *request) {
+    // Default: serve home page
+    request->send(200, "text/html", AxRobotControlWebServerPage);
+  });
 
 /*  //handling uploading ESP32 firmware file
   webServer->on("/esp32update", HTTP_POST, [](AsyncWebServerRequest *request) {

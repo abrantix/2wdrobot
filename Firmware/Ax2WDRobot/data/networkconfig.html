@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="style/style.css">
 
 </head>
-<body onload='EnableDisable();'>
-    
+<body>
+
     <!-- Navigation bar -->
     <header class="header">
         <!-- Logo -->
@@ -41,45 +41,22 @@
     <main>
         <article>
           <div class="networkconfig-grid">
-			 <form action='networkconfig.html'>
-			  <label for='uiPort'>TCP Port</label>
-			  <div class='noBreakGroup'>
-			  <input type='text' size='5' maxlength='5' id='uiPort' name='Port' value='%WEB_TCP_PORT%'>
-			  </div>
-			  <br/>
-			   <input type='radio' id='n3' name='networktype' value='3' onclick='EnableDisable()' %NETWORKTYPE_CHECKED_3%>
-			   <label for='n3'>Wireless AP</label><br/>
-			   <input type='radio' id='n2' name='networktype' value='2' onclick='EnableDisable()' %NETWORKTYPE_CHECKED_2%>
-			   <label for='n2'>Wireless Client (STA) DHCP</label><br/>
-			   <br/>
-			   <div id='wifibox'>
-				 <label for='uiSSID'>SSID</label>
-				 <div class='noBreakGroup'>
-				   <input type='text' list='uiSSID' name='SSID' style='width: 385px;' value='%SSID%'/>
-				  </div>
-				  <label for='uiPassword'>WIFI Password</label>
-				  <div class='noBreakGroup'>
-				  <input type='password' size='63' maxlength='63' id='uiPassword' name='Password' value=''>
-				  </div>
-				  </div>
-				  <br/><br;/>
-				  <input type='submit' value='Apply Changes'>
-				  <br/><br/>
-				  </div>
-				  <br/><br/>
-				  </div>
-				  </form>
+            <form action='networkconfig.html'>
+              <label for='uiPort'>TCP Port</label>
+              <div class='noBreakGroup'>
+                <input type='text' size='5' maxlength='5' id='uiPort' name='Port' value='%WEB_TCP_PORT%'>
+              </div>
+              <br/>
+              <label>WiFi Mode</label>
+              <div>Wireless AP (fixed)</div>
+              <br/>
+              <label>AP SSID</label>
+              <div><strong>%AP_SSID%</strong></div>
+              <br/><br/>
+              <input type='submit' value='Apply &amp; Reboot'>
+            </form>
           </div>
-
         </article>
     </main>
-  <script>
-    function EnableDisable() {
-    var wifiboxNodes = document.getElementById('wifibox').getElementsByTagName('*');
-    for (var node of wifiboxNodes) {
-      node.disabled = !document.getElementById('n2').checked;
-    }
-  }
-  </script>
 </body>
 </html>

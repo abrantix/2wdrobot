@@ -5,6 +5,7 @@
 
 /*
 // BLOBINATIOR: abranitx - white.png
+*/
 
 unsigned char abranitx_white[27841] =
 {
@@ -1753,6 +1754,7 @@ unsigned char abranitx_white[27841] =
 
 int abranitx_whitecnt = 27841;
 
+/*
 // BLOBINATIOR: abrantix - blue.png
 
 unsigned char abrantix_blue[27358] =

@@ -126,18 +126,7 @@ void AxDisplay::RefreshDisplay()
   
     if(currentNetworkConnectionStatus)
     {
-        switch (AxNetworkInstance.GetNetworkMode())
-        {
-          case USB:
-           display->print("USB - ready");
-           break;
-          case WIRELESS_STA:
-          case WIRELESS_AP:
-          case WIRED_DHCP:
-          default:
-            display->print(currentDisplayIp);
-            break;
-        }
+        display->print(currentDisplayIp);
     }
     else
     {

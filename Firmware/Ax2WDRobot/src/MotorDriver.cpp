@@ -4,21 +4,24 @@
 
 MotorDriver MotorDriverInstance;
 
-Motor::Motor() : currentSpeed(0), targetSpeed(0), lastSlewUpdate(0), requestedStop(false), pwmConfigured(false) {
+Motor::Motor() : currentSpeed(0), targetSpeed(0), lastSlewUpdate(0), requestedStop(false), pwmConfigured(false), activePwmPin(0) {
     state = MotorState_Stop; // explicit init
 }
 Motor::~Motor() {}
 
 void Motor::InitPwmChannel() {
-    if (!pwmConfigured) {
-        ledcSetup(pwmChannel, PWM_Frequency, PWM_Resolution); // configure frequency & resolution once
-        pwmConfigured = true;
-    }
+    // No-op in ESP32 Arduino 3.x: ledcAttach() handles channel setup internally.
 }
 
 void Motor::SetupPwm(uint8_t pin) {
-    InitPwmChannel();
-    ledcAttachPin(pin, pwmChannel); // (re)attach the active direction pin
+    if (activePwmPin != 0 && activePwmPin != pin) {
+        ledcDetach(activePwmPin); // release old pin before attaching the new one
+    }
+    if (activePwmPin != pin) {
+        ledcAttach(pin, PWM_Frequency, PWM_Resolution);
+        activePwmPin = pin;
+        pwmConfigured = true;
+    }
 }
 
 void Motor::SetSpeed(uint8_t speed) {
@@ -30,7 +33,7 @@ void Motor::ForceStop() {
     targetSpeed = 0;
     currentSpeed = 0;
     if (pwmConfigured) {
-        ledcWrite(pwmChannel, 0);
+        ledcWrite(activePwmPin, 0);
     }
     requestedStop = false;
 }
@@ -45,13 +48,13 @@ void Motor::UpdatePwm(bool MotorStateChanged) {
         switch (state) {
             case MotorState_Forward:
                 SetupPwm(pinA);
-                ledcWrite(pwmChannel, currentSpeed);
+                ledcWrite(activePwmPin, currentSpeed);
                 pinMode(pinB, OUTPUT);
                 digitalWrite(pinB, 0);
                 break;
             case MotorState_Backward:
                 SetupPwm(pinB);
-                ledcWrite(pwmChannel, currentSpeed);
+                ledcWrite(activePwmPin, currentSpeed);
                 pinMode(pinA, OUTPUT);
                 digitalWrite(pinA, 0);
                 break;
@@ -66,7 +69,7 @@ void Motor::UpdatePwm(bool MotorStateChanged) {
         }
     } else {
         if (state != MotorState_Stop) {
-            ledcWrite(pwmChannel, currentSpeed);
+            ledcWrite(activePwmPin, currentSpeed);
         }
     }
 }
@@ -76,7 +79,7 @@ bool Motor::Process() {
     if (state == MotorState_Stop) {
         if (currentSpeed != 0) {
             currentSpeed = 0;
-            if (pwmConfigured) ledcWrite(pwmChannel, 0);
+            if (pwmConfigured) ledcWrite(activePwmPin, 0);
             return true;
         }
         return false;
@@ -119,7 +122,7 @@ bool Motor::Process() {
 
     // apply updated PWM value if motor is active
     if (state != MotorState_Stop && pwmConfigured) {
-        ledcWrite(pwmChannel, currentSpeed);
+        ledcWrite(activePwmPin, currentSpeed);
     }
 
     // If we have reached target and requestedStop was set, convert to Stop (handled next loop or now if reached zero)

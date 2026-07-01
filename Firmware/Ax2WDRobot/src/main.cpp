@@ -146,7 +146,7 @@ bool setFuses()
     uint8_t value = 1;
 
     // Check and set SDIO_TIEH
-    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_SDIO_TIEH) == 0) 
+    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_XPD_SDIO_TIEH) == 0) 
     {
         changed = true;
         err = esp_efuse_write_field_blob(ESP_EFUSE_SDIO_TIEH, &value, 1);
@@ -168,7 +168,7 @@ bool setFuses()
     }
 
     // Check and set SDIO_FORCE
-    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_RD_SDIO_FORCE) == 0) 
+    if ((REG_READ(EFUSE_BLK0_RDATA4_REG) & EFUSE_XPD_SDIO_FORCE) == 0) 
     {
         changed = true;
         err = esp_efuse_write_field_blob(ESP_EFUSE_SDIO_FORCE, &value, 1);

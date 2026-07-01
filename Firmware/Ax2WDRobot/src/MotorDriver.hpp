@@ -60,6 +60,7 @@ public:
     uint8_t pinA;
     uint8_t pinB;
     uint8_t pwmChannel;
+    uint8_t activePwmPin;   // pin currently attached to LEDC (0 = none)
 
     Motor();
     ~Motor();
@@ -70,7 +71,7 @@ public:
     void SmoothStop();                // request target speed 0 and stop when reached
     bool IsIdle() const { return state == MotorState_Stop && currentSpeed == 0 && targetSpeed == 0; }
     uint8_t GetTargetSpeed() const { return targetSpeed; }
-    void InitPwmChannel();            // ensure channel configured once before writes
+    void InitPwmChannel();            // no-op in ESP32 Arduino 3.x (ledcAttach handles setup)
 };
 
 class MotorDriver
