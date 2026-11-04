@@ -5,12 +5,16 @@
 #include "CameraHandler.h"
 #include "MotorDriver.hpp"
 #include "Ultrasonic.h"
+#include "Accelerometer.h"
+#include "Game.h"
 #include "ObstacleAvoidance.hpp"
 #include "esp_efuse.h"
 #include "esp_efuse_table.h"
 #include "esp_log.h"
 
 #define TAG "SetFuses"
+#define SPLASH_MIN_MILLIS 3000
+#define CONNECT_INFO_MILLIS 10000
 
 //
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
@@ -51,7 +55,7 @@ void setup() {
   pinMode(TWI_SEL_PIN, OUTPUT);
 
   AxDisplayInstance.Init(&Wire);
-  AxDisplayInstance.Display("Examining\nHardware");
+  AxDisplayInstance.ShowSplash();
 
   MotorDriverInstance.Init();
 
@@ -61,17 +65,26 @@ void setup() {
     Serial.print(VERSION_PROGMEM);
   }
 
-  Serial.setDebugOutput(true);
+  Serial.setDebugOutput(false); // keep WiFi/IDF logs off the slow UART
   Serial.println("Startup...");
 
   AxEEPROMInstance.Init();
   axButton.Init();
   UltrasonicInstance.Init();
+  AccelerometerInstance.Init(&Wire);
   axWebServer.Init();
+  // Camera first: its DMA buffers need contiguous internal RAM, which WiFi would fragment
+  CameraHandlerInstance.Init();
   AxNetworkInstance.Setup(&(EEPROMData.IPConfiguration));
   AxNetworkInstance.ConnectionChanged = OnNetworkChanged;
-  CameraHandlerInstance.Init();
 
+  // Keep the splash visible for a minimum time
+  while(millis() < SPLASH_MIN_MILLIS)
+  {
+    delay(10);
+  }
+
+  AxDisplayInstance.ShowConnectInfo(CONNECT_INFO_MILLIS);
   startupCompleteMillis = millis();
 }
 
@@ -82,6 +95,8 @@ void loop()
   axButton.Process();
   AxNetworkInstance.Process();
   UltrasonicInstance.Process();
+  AccelerometerInstance.Process();
+  GameManagerInstance.Process();
   processButtons();
   CameraHandlerInstance.Process();
   MotorDriverInstance.Process();
@@ -111,6 +126,11 @@ void processButtons()
   {
     TRACELN("Disable Screen Saver");
     AxDisplayInstance.DisableScreenSaver();
+  }
+
+  if(axButton.IsButtonJustReleased(BUTTON_TYPE_FRONT) && axButton.GetLastPressDuration(BUTTON_TYPE_FRONT) < 1500)
+  {
+    GameManagerInstance.Next();
   }
 
   /* Check if Front button was pressed for long time - either directly at startup or at a later time */

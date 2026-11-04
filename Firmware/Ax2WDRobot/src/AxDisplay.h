@@ -28,6 +28,13 @@ public:
   void Display(const char* message);
   void DisplayCustom(const char* message);
   void DisplayBitmap(const unsigned char* bitmap, uint16_t length);
+  void ShowSplash();
+  void ShowConnectInfo(uint32_t durationMillis);
+  void UpdateAcceleration(float x, float y, float z);
+  // Game mode: the normal info screen is suspended and a game draws the frames
+  void SetGameMode(bool active);
+  Adafruit_SSD1306* BeginDraw();
+  void EndDraw();
 
 
 private:
@@ -40,6 +47,10 @@ private:
   bool isInitialized:1;
   Adafruit_SSD1306* display;
   unsigned long lastShowmillis;
+  unsigned long infoUntil;
+  float accel[3] = {0, 0, 0};
+  bool accelValid = false;
+  volatile bool gameMode = false;
   uint8_t currentYPosition;
   void NextLine();
 };

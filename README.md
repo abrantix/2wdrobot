@@ -9,7 +9,7 @@ The Ax2WDRobot is a 2 Wheel-Drive platform based on espressif's ESP32 module. It
 - 2 independently controlled DC motors
 - Omnivision camera module
 - Ultrasonic distance sensor
-- 6-axis gyroscope (no firmware support so far)
+- LIS2DW12 3-axis accelerometer (x/y/z shown on the display)
 - LiIon powered (18650 cell)
 - Charging and programming over USB-C connector
 - Easy to assemble; No soldering required

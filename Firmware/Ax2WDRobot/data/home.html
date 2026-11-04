@@ -256,10 +256,12 @@
           callRunning = true;
           var xhr = new XMLHttpRequest();
           xhr.open("GET", "/robot-control?x=" + joystick1.value.x + "&y=" + joystick1.value.y, true);
-          xhr.onload = () => {
-            // Request finished.
-            callRunning = false
-          };
+          xhr.timeout = 1000;
+          const done = () => { callRunning = false };
+          xhr.onload = done;
+          xhr.onerror = done;
+          xhr.onabort = done;
+          xhr.ontimeout = done;
           xhr.send();
         }
       }

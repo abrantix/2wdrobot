@@ -170,8 +170,19 @@ void MotorDriver::EmergencyStop() {
 }
 
 void MotorDriver::SetSpeed(uint8_t speed) {
+    if (locked) return;
     motorR.SetSpeed(speed);
     motorL.SetSpeed(speed);
+}
+
+void MotorDriver::SetLocked(bool lock) {
+    locked = lock;
+    if (lock) {
+        std::queue<Movement>().swap(movementQueue);
+        isMoving = false;
+        pendingDirChange = false;
+        EmergencyStop();
+    }
 }
 
 void MotorDriver::Forward() {
@@ -201,6 +212,7 @@ void MotorDriver::RotateCounterClockwise() {
 void MotorDriver::RequestDirection(MotorState left, MotorState right, uint8_t speed) {
     // speed parameter currently unused; using existing motor target speeds
     (void)speed;
+    if (locked) return;
 
     // If no change needed just ensure PWM update
     if (motorL.state == left && motorR.state == right) {
@@ -231,6 +243,7 @@ void MotorDriver::RequestDirection(MotorState left, MotorState right, uint8_t sp
 }
 
 void MotorDriver::EnqueueMovement(MovementType type, uint8_t speed, unsigned long duration) {
+    if (locked) return;
     Movement move = { type, speed, duration };
     movementQueue.push(move);
 }
@@ -241,6 +254,7 @@ bool MotorDriver::IsMoving() {
 }
 
 void MotorDriver::ExecuteMovement(const Movement& move) {
+    if (locked) return;
     motorL.SetSpeed(move.speed);
     motorR.SetSpeed(move.speed);
     switch (move.type) {
@@ -281,6 +295,15 @@ void MotorDriver::ExecuteQueue() {
 }
 
 void MotorDriver::Process() {
+    if (locked) {
+        // Catch a command that slipped in from another task right before the lock
+        if (!motorL.IsIdle() || !motorR.IsIdle()) {
+            EmergencyStop();
+        }
+        delay(1);
+        return;
+    }
+
     // advance slew for each motor first
     bool changedL = motorL.Process();
     bool changedR = motorR.Process();
@@ -317,6 +340,7 @@ void MotorDriver::Process() {
 
 void MotorDriver::JoyStickControl(float x, float y)
 {
+    if (locked) return;
 
     float overallSpeed = sqrt(x*x + y*y);
     //80...255
@@ -324,7 +348,7 @@ void MotorDriver::JoyStickControl(float x, float y)
     uint8_t pwmXSpeed = map(abs(x) * 255 * overallSpeed, 0, 255, SPEED_MIN, SPEED_MAX);
     uint8_t pwmYSpeed = map(abs(y) * 255 * overallSpeed, 0, 255, SPEED_MIN, SPEED_MAX);
 
-    TRACEPRINTF("overall:%d x:%d y:%d\n", pwmOverallSpeed, pwmXSpeed, pwmYSpeed);
+    //TRACEPRINTF("overall:%d x:%d y:%d\n", pwmOverallSpeed, pwmXSpeed, pwmYSpeed);
 
     //lookup quadrant
     if(y==0 && y==0)

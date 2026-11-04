@@ -53,10 +53,42 @@ void AxNetwork::Setup(PIPCONFIG ipCfg)
 
   const int wifiChannels[] = {1, 6, 11};
   WiFi.onEvent(AxNetwork::WiFiEvent);
+
+  // Pick the least congested of the non-overlapping channels
+  int channel = wifiChannels[random(0, 3)];
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  int found = WiFi.scanNetworks();
+  if (found > 0)
+  {
+    long load[3] = {0, 0, 0};
+    for (int i = 0; i < found; i++)
+    {
+      int ch = WiFi.channel(i);
+      long weight = 120 + WiFi.RSSI(i); // stronger neighbours weigh more
+      if (weight < 1) weight = 1;
+      // Channels 1/6/11 each cover roughly +/-2 channels
+      for (int c = 0; c < 3; c++)
+      {
+        if (abs(ch - wifiChannels[c]) <= 2) load[c] += weight;
+      }
+    }
+    int best = 0;
+    for (int c = 1; c < 3; c++)
+    {
+      if (load[c] < load[best]) best = c;
+    }
+    channel = wifiChannels[best];
+  }
+  WiFi.scanDelete();
+  TRACE("AxNetwork: AP channel: ");
+  TRACELN(channel);
+
   WiFi.mode(WIFI_AP);
   esp_wifi_set_max_tx_power(78);
   WiFi.setSleep(false);
-  WiFi.softAP(hostname, emptyString, wifiChannels[random(0, 3)]);
+  esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
+  WiFi.softAP(hostname, emptyString, channel);
 
   TRACE("AxNetwork: AP SSID: ");
   TRACELN(hostname);

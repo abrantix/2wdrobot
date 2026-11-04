@@ -84,6 +84,7 @@ private:
     Movement currentMovement;              // Store the currently executing movement
     unsigned long lastMoveTime;            // Timestamp of when the last movement started
     bool isMoving;                         // Flag indicating if a movement is in progress
+    volatile bool locked = false;          // While locked every motor command is ignored and the motors stay off
 
     // Pending direction change handling
     bool pendingDirChange = false;
@@ -115,6 +116,8 @@ public:
     bool IsMoving();
     void ExecuteQueue();
     void JoyStickControl(float x, float y);
+    void SetLocked(bool lock);   // safety lock (e.g. game mode): stops immediately and blocks all commands
+    bool IsLocked() const { return locked; }
 };
 
 extern MotorDriver MotorDriverInstance;

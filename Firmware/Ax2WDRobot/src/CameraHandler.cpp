@@ -16,7 +16,8 @@ CameraHandler::CameraHandler()
 
 void CameraHandler::Init()
 {
-  camera_config_t config;
+  camera_config_t config = {}; // zero-init: fb_location etc. must not contain stack garbage
+  config.fb_location = CAMERA_FB_IN_PSRAM;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
   config.pin_d0 = Y2_GPIO_NUM;

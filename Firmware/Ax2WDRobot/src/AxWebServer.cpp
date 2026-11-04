@@ -16,7 +16,7 @@
 #include "InlinePages.h"
 #include "AxEEPROM.h"
 #include "CameraHandler.h"
-#include "AsyncStreamResponse.h"
+#include "CameraStream.h"
 #include "MotorDriver.hpp"
 #include "ObstacleAvoidance.hpp"
 #include "Style.h"
@@ -28,6 +28,10 @@
 /*************** Camera specific section - grabbed/rewritten from esp32-cam app_httpd.cpp example *************/
 
 static bool captureRunning = false;
+
+// Linked in by board_build.embed_files
+extern const uint8_t sourceZipStart[] asm("_binary_embedded_source_zip_start");
+extern const uint8_t sourceZipEnd[] asm("_binary_embedded_source_zip_end");
 
 typedef struct
 {
@@ -105,30 +109,10 @@ static void capture_handler(AsyncWebServerRequest *request)
     TRACEPRINTF("JPG: %uB %ums\n", (uint32_t)(len), (uint32_t)((fr_end - fr_start) / 1000));
 }
 
-// Track single active JPEG stream (close previous when new one connects)
-static AsyncClient* activeStreamClient = nullptr;
-static AsyncJpegStreamResponse* activeStreamResponse = nullptr;
+// A single active stream is kept: CameraStreamer closes the previous client when a new one attaches
 static void streamJpg(AsyncWebServerRequest *request){
-  // Gracefully terminate previous stream by ending its client without forced close
-  if(activeStreamClient){
-    // initiate half-close if connected; AsyncWebServer will cleanup request & response
-    if(activeStreamClient->connected()) {
-      activeStreamClient->close(); // normal close (no "true" forced abort)
-    }
-    activeStreamClient = nullptr;
-    activeStreamResponse = nullptr;
-  }
-  AsyncJpegStreamResponse *response = new AsyncJpegStreamResponse(66); // ~15 FPS pacing
-  if(!response){
-    request->send(501);
-    return;
-  }
+  AsyncJpegStreamResponse *response = new AsyncJpegStreamResponse();
   response->addHeader("Access-Control-Allow-Origin", "*");
-  response->addHeader("X-Framerate", "15");
-  // Capture client and response; ensure pointers cleared on disconnect
-  request->onDisconnect([](){ activeStreamClient = nullptr; activeStreamResponse = nullptr; });
-  activeStreamClient = request->client();
-  activeStreamResponse = response;
   request->send(response);
 }
 
@@ -197,7 +181,6 @@ static bool AxWebServer_ProcessRobotControlPage(AsyncWebServerRequest *request)
     withParam = true;
     String xString = request->getParam("x")->value();
     String yString = request->getParam("y")->value();
-    TRACEPRINTF("go x:%s y:%s\n", xString, yString);
     MotorDriverInstance.JoyStickControl(xString.toFloat(), yString.toFloat());
   }
   return withParam;
@@ -350,6 +333,12 @@ void AxWebServer::Init()
   webServer->on("/fonts/WF-035979-011333-000062.woff2", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send_P(200, "font/woff2", font_1, font_1_len);
   });
+  // Project source embedded in the firmware (see tools/embed_source.py)
+  webServer->on("/source.zip", HTTP_GET, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse_P(200, "application/zip", sourceZipStart, sourceZipEnd - sourceZipStart);
+    response->addHeader("Content-Disposition", "attachment; filename=Ax2WDRobot-source.zip");
+    request->send(response);
+  });
 
   // --- Camera endpoints ---
   webServer->on("/capture", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -361,7 +350,6 @@ void AxWebServer::Init()
 
   // --- Robot control API ---
   webServer->on("/robot-control", HTTP_GET, [](AsyncWebServerRequest *request) {
-    TRACELN("GET /robot-control");
     AxWebServer_ProcessRobotControlPage(request);
     request->send(200, "text/plain", "OK");
   });
@@ -395,6 +383,24 @@ void AxWebServer::Init()
       }
     }
     request->send(200, "text/html", processTemplate(AboutPage2));
+  });
+
+  // --- Connectivity checks: answer like a normal internet-connected network so phones
+  // don't show "Sign in to network" (the DNS catch-all would otherwise trigger a captive portal)
+  auto noContent = [](AsyncWebServerRequest *request) { request->send(204); };
+  webServer->on("/generate_204", HTTP_GET, noContent);   // Android
+  webServer->on("/gen_204", HTTP_GET, noContent);        // Android/Chrome
+  webServer->on("/hotspot-detect.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"); // Apple
+  });
+  webServer->on("/library/test/success.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"); // Apple
+  });
+  webServer->on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Microsoft Connect Test"); // Windows
+  });
+  webServer->on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Microsoft NCSI"); // Windows
   });
 
   webServer->onNotFound([](AsyncWebServerRequest *request) {

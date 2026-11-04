@@ -261,10 +261,12 @@ const char* AxRobotControlWebServerPage = R"V0G0N(
           callRunning = true;
           var xhr = new XMLHttpRequest();
           xhr.open("GET", "/robot-control?x=" + joystick1.value.x + "&y=" + joystick1.value.y, true);
-          xhr.onload = () => {
-            // Request finished.
-            callRunning = false
-          };
+          xhr.timeout = 1000;
+          const done = () => { callRunning = false };
+          xhr.onload = done;
+          xhr.onerror = done;
+          xhr.onabort = done;
+          xhr.ontimeout = done;
           xhr.send();
         }
       }
@@ -328,6 +330,8 @@ const char* AboutPage2 = R"V0G0N(
         <article>
           <div class="about-grid">
             <a href="https://www.github.com/abrantix/2wdrobot">2WDRobot project on Github</a>
+            <br/><br/>
+            <a href="source.zip">Download source code (this firmware)</a>
             <br/><br/>
             <div>Firmware-Version: %FIRMWARE_VERSION%</div>
             <div>MAC-Address: %MAC_ADDRESS%</div>
