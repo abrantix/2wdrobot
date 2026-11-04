@@ -29,6 +29,17 @@ void Motor::SetSpeed(uint8_t speed) {
     targetSpeed = speed;
 }
 
+// pinMode() detaches a pin from LEDC, so forget the PWM attachment too; otherwise SetupPwm() would
+// skip the re-attach when the same direction is requested again and that motor would stay dead
+void Motor::ReleasePins() {
+    pinMode(pinA, OUTPUT);
+    digitalWrite(pinA, 0);
+    pinMode(pinB, OUTPUT);
+    digitalWrite(pinB, 0);
+    activePwmPin = 0;
+    pwmConfigured = false;
+}
+
 void Motor::ForceStop() {
     targetSpeed = 0;
     currentSpeed = 0;
@@ -59,10 +70,7 @@ void Motor::UpdatePwm(bool MotorStateChanged) {
                 digitalWrite(pinA, 0);
                 break;
             case MotorState_Stop:
-                pinMode(pinA, OUTPUT);
-                digitalWrite(pinA, 0);
-                pinMode(pinB, OUTPUT);
-                digitalWrite(pinB, 0);
+                ReleasePins();
                 break;
             default:
                 break;
@@ -90,8 +98,7 @@ bool Motor::Process() {
         if (requestedStop && targetSpeed == 0 && currentSpeed == 0) {
             state = MotorState_Stop;
             // ensure both pins low
-            pinMode(pinA, OUTPUT); digitalWrite(pinA, 0);
-            pinMode(pinB, OUTPUT); digitalWrite(pinB, 0);
+            ReleasePins();
             requestedStop = false;
             return true;
         }
@@ -128,8 +135,7 @@ bool Motor::Process() {
     // If we have reached target and requestedStop was set, convert to Stop (handled next loop or now if reached zero)
     if (requestedStop && currentSpeed == 0) {
         state = MotorState_Stop;
-        pinMode(pinA, OUTPUT); digitalWrite(pinA, 0);
-        pinMode(pinB, OUTPUT); digitalWrite(pinB, 0);
+        ReleasePins();
         requestedStop = false;
     }
     return true;

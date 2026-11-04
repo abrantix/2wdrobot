@@ -336,8 +336,6 @@ const char* AboutPage2 = R"V0G0N(
             <div>Firmware-Version: %FIRMWARE_VERSION%</div>
             <div>MAC-Address: %MAC_ADDRESS%</div>
             <form action='about.html'>
-              <input type='radio' id='n1' name='option' value='1'>
-              <label for='n1'>Option 1</label><br/>
               <input type='radio' id='n2' name='option' value='2'>
               <label for='n2'>Obstacle Avoidance ON</label><br/>
               <input type='radio' id='n3' name='option' value='3'>

@@ -366,17 +366,12 @@ void AxWebServer::Init()
       int option = request->getParam("option")->value().toInt();
       switch(option)
       {
-        case 1:
-          AxDisplayInstance.DisplayCustom("Option 1");
-          ObstacleAvoidanceInstance.enabled = false;
-          MotorDriverInstance.EnqueueMovement(MovementType_RotateClockwise, SPEED_DEFAULT, 1500);
-          break;
         case 2:
-          AxDisplayInstance.DisplayCustom("Option 2");
+          AxDisplayInstance.DisplayCustom("");
           ObstacleAvoidanceInstance.enabled = true;
           break;
         case 3:
-          AxDisplayInstance.DisplayCustom("Option 3");
+          AxDisplayInstance.DisplayCustom("");
           MotorDriverInstance.EnqueueMovement(MovementType_Stop, SPEED_DEFAULT, 0);
           ObstacleAvoidanceInstance.enabled = false;
           break;

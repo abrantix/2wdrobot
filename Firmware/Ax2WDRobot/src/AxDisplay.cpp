@@ -198,6 +198,7 @@ void AxDisplay::RefreshDisplay()
     NextLine();
     if(currentNetworkConnectionStatus)
     {
+        display->print("http://");
         display->print(currentDisplayIp);
     }
     else

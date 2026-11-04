@@ -53,6 +53,7 @@ private:
     unsigned long lastSlewUpdate; // last millis() timestamp for slew calculations
     bool requestedStop;           // indicates we should enter Stop state when speed reaches 0
     void SetupPwm(uint8_t pin);
+    void ReleasePins();
     bool pwmConfigured;           // true once ledcSetup executed for this motor's channel
 
 public:
