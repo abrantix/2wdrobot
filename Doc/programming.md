@@ -29,6 +29,10 @@ For firmware development, Visual Studio Code in conjunction with platformio exte
  
    ![Open Firmware](ide/open_firmware.png)
 
+7. If Visual Studio Code asks whether you trust the authors of the files in this folder, click *Yes*. Otherwise the project is opened in restricted mode and PlatformIO cannot build it.
+
+   ![Trust Authors](ide/trust_authors.png)
+
 ### Driver installation
 The *Ax2WDRobot* uses a Silicon Labs CP210X USB to UART Bridge for communication between PC and robot. Depending on given OS, this driver is already built-in, could be provided as optional Update package or has to be manually installed. In case of a manual installation, please refer to https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads
 
