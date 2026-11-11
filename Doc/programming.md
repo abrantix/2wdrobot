@@ -29,7 +29,9 @@ For firmware development, Visual Studio Code in conjunction with platformio exte
  
    ![Open Firmware](ide/open_firmware.png)
 
-7. If Visual Studio Code asks whether you trust the authors of the files in this folder, click *Yes*. Otherwise the project is opened in restricted mode and PlatformIO cannot build it.
+7. Visual Studio Code may ask whether you trust the authors of the files in this folder. Depending on the situation, one of the following dialogs pops up - click *Trust Folder & Continue* or *Yes* respectively. Otherwise the project is opened in restricted mode and PlatformIO cannot build it.
+
+   ![Trust Folder](ide/trust_folder.png)
 
    ![Trust Authors](ide/trust_authors.png)
 
