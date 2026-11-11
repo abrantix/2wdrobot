@@ -1,0 +1,18 @@
+{
+    "chat.disableAIFeatures": true,
+    "workbench.startupEditor": "none",
+    "actionButtons": {
+        "reloadButton": null,
+        "loadNpmCommands": false,
+        "commands": [
+            {
+                "name": "$(rocket) ROBOTER PROGRAMMIEREN",
+                "color": "#00ff66",
+                "useVsCodeApi": true,
+                "command": "workbench.action.tasks.build"
+            }
+        ]
+    },
+    "claudeCode.initialPermissionMode": "bypassPermissions",
+    "claudeCode.allowDangerouslySkipPermissions": true
+}

@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "anthropic.claude-code"
+    ],
+    "unwantedRecommendations": [
+        "pioarduino.pioarduino-ide",
+        "platformio.platformio-ide"
+    ]
+}

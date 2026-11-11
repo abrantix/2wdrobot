@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(pio run)",
+      "Bash(pio run:*)",
+      "Bash(pio device monitor:*)",
+      "Bash(python tools/png_to_logo.py:*)",
+      "Bash(python tools\\png_to_logo.py:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(./src/Image.h)",
+      "Read(./src/Font.h)",
+      "Read(./src/InlinePages.h)",
+      "Read(./src/Icon.h)",
+      "Read(./src/FreeSans7pt7b.h)",
+      "Read(./src/FreeSansBold7pt7b.h)",
+      "Read(./fonts/**)",
+      "Read(./.pio/**)",
+      "Edit(./platformio.ini)",
+      "Edit(./src/Pinout.h)",
+      "Edit(./src/camera_pins.h)",
+      "Edit(./src/Image.h)",
+      "Edit(./src/Font.h)",
+      "Edit(./src/InlinePages.h)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(Invoke-WebRequest:*)",
+      "Bash(rm:*)",
+      "Bash(del:*)",
+      "Bash(Remove-Item:*)"
+    ]
+  }
+}
