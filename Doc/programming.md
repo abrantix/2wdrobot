@@ -25,7 +25,7 @@ For firmware development, Visual Studio Code in conjunction with platformio exte
 
    ![Open Project](ide/open_project.png)
 
-6. Navigate to the folder where you cloned the github project from and open *Ax2WDRobot/firmware/Ax2WDRobot* and click *Open Firmware*.
+6. Navigate to the folder where you cloned the github project from and open *Firmware/Ax2WDRobot* and click *Open Firmware*.
  
    ![Open Firmware](ide/open_firmware.png)
 
@@ -36,6 +36,8 @@ The *Ax2WDRobot* uses a Silicon Labs CP210X USB to UART Bridge for communication
 After opening the platformio project, the status bar got some additional icons.
 To build, just press the *Check* icon
 ![Build](ide/build.png)
+
+> **Note:** The first build takes considerably longer, because PlatformIO downloads the pioarduino platform (Arduino core 3.x / ESP-IDF 5.x) and all required libraries automatically. Subsequent builds are much faster.
 
 To upload, first connect the *Ax2WDRobot* to the PC and turn it on. Then, press the *right arrow* icon to build and upload the firmware.
 ![Build](ide/upload.png)
