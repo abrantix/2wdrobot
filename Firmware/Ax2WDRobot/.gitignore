@@ -7,3 +7,4 @@ __pycache__
 src/html/*.gz*
 
 embedded/
+src/idf_component.yml
