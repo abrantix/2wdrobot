@@ -11,6 +11,7 @@
 #include "esp_efuse.h"
 #include "esp_efuse_table.h"
 #include "esp_log.h"
+#include "Diagnostics.h"
 
 #define TAG "SetFuses"
 #define SPLASH_MIN_MILLIS 3000
@@ -86,10 +87,12 @@ void setup() {
 
   AxDisplayInstance.ShowConnectInfo(CONNECT_INFO_MILLIS);
   startupCompleteMillis = millis();
+  Diagnostics::Start();
 }
 
 void loop() 
 {
+  Diagnostics::LoopTick();
   axWebServer.Process();
   AxDisplayInstance.Process();
   axButton.Process();

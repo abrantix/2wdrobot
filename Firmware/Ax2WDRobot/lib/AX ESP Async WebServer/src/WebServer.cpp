@@ -21,6 +21,11 @@
 #include "ESPAsyncWebServer.h"
 #include "WebHandlerImpl.h"
 
+// Diagnostic counters (read by the firmware's Diagnostics monitor)
+volatile uint32_t AsyncWebServer_DiagAccepted = 0;
+volatile uint32_t AsyncWebServer_DiagRequests = 0;
+volatile uint32_t AsyncWebServer_DiagDisconnects = 0;
+
 bool ON_STA_FILTER(AsyncWebServerRequest *request) {
   return WiFi.localIP() == request->client()->localIP();
 }
@@ -41,7 +46,10 @@ AsyncWebServer::AsyncWebServer(uint16_t port)
   _server.onClient([](void *s, AsyncClient* c){
     if(c == NULL)
       return;
+    AsyncWebServer_DiagAccepted++;
     c->setRxTimeout(3);
+    // Must fire before the rx timeout, which only closes gracefully (see _onTimeout)
+    c->setAckTimeout(2000);
     AsyncWebServerRequest *r = new AsyncWebServerRequest((AsyncWebServer*)s, c);
     if(r == NULL){
       c->close(true);
@@ -99,6 +107,7 @@ void AsyncWebServer::beginSecure(const char *cert, const char *key, const char *
 #endif
 
 void AsyncWebServer::_handleDisconnect(AsyncWebServerRequest *request){
+  AsyncWebServer_DiagDisconnects++;
   delete request;
 }
 
@@ -112,6 +121,12 @@ void AsyncWebServer::_rewriteRequest(AsyncWebServerRequest *request){
 }
 
 void AsyncWebServer::_attachHandler(AsyncWebServerRequest *request){
+  AsyncWebServer_DiagRequests++;
+  // Joystick polling is too frequent to trace
+  if(!request->url().startsWith("/robot-control")){
+    Serial.printf("[http] %lu %s %s from %s\n", millis(), request->methodToString(), request->url().c_str(),
+                  request->client()->remoteIP().toString().c_str());
+  }
   for(const auto& h: _handlers){
     if (h->filter(request) && h->canHandle(request)){
       request->setHandler(h);

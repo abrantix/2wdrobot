@@ -6,8 +6,11 @@
 // The HTTP response only sends the headers and then hands the connection to the streamer task.
 // AsyncClient::write() is thread safe in AsyncTCP; the client pointer itself is protected by a
 // mutex and cleared from the disconnect callback before the client object is deleted.
-// The mutex must be recursive: AsyncClient::close() invokes the disconnect callback (-> Detach)
-// synchronously, while Attach/WriteAll already hold the mutex.
+// Clients are reset with abort() rather than close(): close() runs the disconnect callback
+// (-> Detach, request deletion) synchronously in the calling task, and a graceful close of a
+// stalled connection keeps it (with its unsent data) alive in lwIP and in the browser for minutes.
+// abort() only queues an error event; the async_tcp task then runs Detach and deletes the client,
+// which cannot happen before we release the mutex. The mutex is recursive as a safety net.
 
 #include "Arduino.h"
 #include "esp_camera.h"
@@ -25,10 +28,12 @@ public:
     static void Attach(AsyncClient* client)
     {
         EnsureStarted();
+        Serial.printf("[stream] %lu attach %s\n", millis(), client->remoteIP().toString().c_str());
         xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
         if(activeClient && activeClient != client)
         {
-            activeClient->close();
+            Serial.println("[stream] aborting previous client");
+            activeClient->abort();
         }
         activeClient = client;
         xSemaphoreGiveRecursive(mutex);
@@ -40,9 +45,20 @@ public:
         xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
         if(activeClient == client)
         {
+            Serial.printf("[stream] %lu detach\n", millis());
             activeClient = nullptr;
         }
         xSemaphoreGiveRecursive(mutex);
+    }
+
+    // Diagnostic counters
+    static inline volatile uint32_t DiagFrames = 0;
+    static inline volatile uint32_t DiagBytes = 0;
+    static inline volatile uint32_t DiagStalls = 0;
+
+    static bool IsActive()
+    {
+        return activeClient != nullptr;
     }
 
 private:
@@ -93,7 +109,9 @@ private:
             }
             if(!written && millis() - lastProgress > 1000)
             {
-                c->close();
+                DiagStalls++;
+                Serial.printf("[stream] %lu no TX progress for 1s (space=%u), aborting\n", millis(), (unsigned)room);
+                c->abort();
                 activeClient = nullptr;
                 xSemaphoreGiveRecursive(mutex);
                 return false;
@@ -138,7 +156,11 @@ private:
                                  (unsigned)fb->len, (long)fb->timestamp.tv_sec, (long)fb->timestamp.tv_usec);
                 if(WriteAll((const uint8_t*)header, hlen))
                 {
-                    WriteAll(fb->buf, fb->len);
+                    if(WriteAll(fb->buf, fb->len))
+                    {
+                        DiagFrames++;
+                        DiagBytes += fb->len;
+                    }
                 }
             }
             esp_camera_fb_return(fb);

@@ -213,7 +213,10 @@ void AsyncWebServerRequest::_onError(int8_t error){
 
 void AsyncWebServerRequest::_onTimeout(uint32_t time){
   //os_printf("TIMEOUT: %u, state: %s\n", time, _client->stateToString());
-  _client->close();
+  // Reset instead of a graceful close: a peer that stopped acknowledging would otherwise keep
+  // the connection (with all its unsent data) alive in lwIP for minutes
+  Serial.printf("[http] %lu ack timeout (%lums), aborting %s\n", millis(), (unsigned long)time, _url.c_str());
+  _client->abort();
 }
 
 void AsyncWebServerRequest::onDisconnect (ArDisconnectHandler fn){
