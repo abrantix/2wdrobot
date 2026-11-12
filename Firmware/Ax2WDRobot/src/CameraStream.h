@@ -6,6 +6,8 @@
 // The HTTP response only sends the headers and then hands the connection to the streamer task.
 // AsyncClient::write() is thread safe in AsyncTCP; the client pointer itself is protected by a
 // mutex and cleared from the disconnect callback before the client object is deleted.
+// The mutex must be recursive: AsyncClient::close() invokes the disconnect callback (-> Detach)
+// synchronously, while Attach/WriteAll already hold the mutex.
 
 #include "Arduino.h"
 #include "esp_camera.h"
@@ -23,24 +25,24 @@ public:
     static void Attach(AsyncClient* client)
     {
         EnsureStarted();
-        xSemaphoreTake(mutex, portMAX_DELAY);
+        xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
         if(activeClient && activeClient != client)
         {
             activeClient->close();
         }
         activeClient = client;
-        xSemaphoreGive(mutex);
+        xSemaphoreGiveRecursive(mutex);
         xTaskNotifyGive(task);
     }
 
     static void Detach(AsyncClient* client)
     {
-        xSemaphoreTake(mutex, portMAX_DELAY);
+        xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
         if(activeClient == client)
         {
             activeClient = nullptr;
         }
-        xSemaphoreGive(mutex);
+        xSemaphoreGiveRecursive(mutex);
     }
 
 private:
@@ -54,15 +56,15 @@ private:
         {
             return;
         }
-        mutex = xSemaphoreCreateMutex();
+        mutex = xSemaphoreCreateRecursiveMutex();
         xTaskCreatePinnedToCore(TaskMain, "camstream", 4096, nullptr, 2, &task, 1);
     }
 
     static bool HasClient()
     {
-        xSemaphoreTake(mutex, portMAX_DELAY);
+        xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
         bool has = activeClient != nullptr;
-        xSemaphoreGive(mutex);
+        xSemaphoreGiveRecursive(mutex);
         return has;
     }
 
@@ -75,11 +77,11 @@ private:
         while(sent < len)
         {
             size_t written = 0;
-            xSemaphoreTake(mutex, portMAX_DELAY);
+            xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
             AsyncClient* c = activeClient;
             if(!c)
             {
-                xSemaphoreGive(mutex);
+                xSemaphoreGiveRecursive(mutex);
                 return false;
             }
             size_t remaining = len - sent;
@@ -93,10 +95,10 @@ private:
             {
                 c->close();
                 activeClient = nullptr;
-                xSemaphoreGive(mutex);
+                xSemaphoreGiveRecursive(mutex);
                 return false;
             }
-            xSemaphoreGive(mutex);
+            xSemaphoreGiveRecursive(mutex);
 
             if(written)
             {

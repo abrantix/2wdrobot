@@ -47,8 +47,8 @@ static void capture_handler(AsyncWebServerRequest *request)
     int64_t fr_start = esp_timer_get_time();
     char ts[32];
     uint8_t * buf;              /*!< Pointer to the pixel data */
-    size_t len;                 /*!< Length of the buffer in bytes */
-    bool error;
+    size_t len = 0;             /*!< Length of the buffer in bytes */
+    bool error = false;
 
     AsyncWebServerResponse *response;
 
@@ -62,7 +62,6 @@ static void capture_handler(AsyncWebServerRequest *request)
     {
       //TRACELN("Capture: get FB");
       fb = esp_camera_fb_get();
-      snprintf(ts, 32, "%ld.%06ld", fb->timestamp.tv_sec, fb->timestamp.tv_usec);
 
       if (!fb)
       {
@@ -72,6 +71,7 @@ static void capture_handler(AsyncWebServerRequest *request)
       }
       else
       {
+        snprintf(ts, 32, "%ld.%06ld", fb->timestamp.tv_sec, fb->timestamp.tv_usec);
         if (fb->format == PIXFORMAT_JPEG)
         {
             buf = fb->buf;
