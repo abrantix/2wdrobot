@@ -21,6 +21,9 @@ static const char* STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" P
 static const char* STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\nX-Timestamp: %ld.%06ld\r\n\r\n";
 
+// Phones regularly pause ACKs for 1-2s (WiFi power save, retransmissions); only give up after this
+static const uint32_t STALL_TIMEOUT_MS = 5000;
+
 class CameraStreamer
 {
 public:
@@ -107,10 +110,10 @@ private:
             {
                 written = c->write((const char*)data + sent, remaining < room ? remaining : room);
             }
-            if(!written && millis() - lastProgress > 1000)
+            if(!written && millis() - lastProgress > STALL_TIMEOUT_MS)
             {
                 DiagStalls++;
-                Serial.printf("[stream] %lu no TX progress for 1s (space=%u), aborting\n", millis(), (unsigned)room);
+                Serial.printf("[stream] %lu no TX progress for %lums (space=%u), aborting\n", millis(), (unsigned long)STALL_TIMEOUT_MS, (unsigned)room);
                 c->abort();
                 activeClient = nullptr;
                 xSemaphoreGiveRecursive(mutex);
@@ -189,6 +192,10 @@ public:
         String head = _assembleHead(request->version());
         // Stays in RESPONSE_CONTENT (never "finished") until the client disconnects
         _state = RESPONSE_CONTENT;
+        // The web server's short rx/ack timeouts are meant for normal requests; a stream receives
+        // nothing and may pause, so stalls are handled (with abort) by WriteAll instead
+        client->setRxTimeout(0);
+        client->setAckTimeout(STALL_TIMEOUT_MS + 2000);
         client->write(head.c_str(), head.length());
         request->onDisconnect([client]() { CameraStreamer::Detach(client); });
         CameraStreamer::Attach(client);

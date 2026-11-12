@@ -135,6 +135,10 @@ const char* AxRobotControlWebServerPage = R"V0G0N(
         })
 
       const view = document.getElementById('stream')
+      // Reconnect the camera stream when it breaks (e.g. reset by the robot after a WiFi stall)
+      view.onerror = () => {
+        setTimeout(() => { view.src = 'stream?t=' + Date.now() }, 1000)
+      }
       const viewContainer = document.getElementById('stream-container')
       const stillButton = document.getElementById('get-still')
       const closeButton = document.getElementById('close-stream')
