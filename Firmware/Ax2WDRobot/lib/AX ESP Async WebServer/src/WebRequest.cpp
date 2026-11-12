@@ -715,7 +715,7 @@ void AsyncWebServerRequest::addInterestingHeader(const String& name){
 void AsyncWebServerRequest::send(AsyncWebServerResponse *response){
   _response = response;
   if(_response == NULL){
-    _client->close(true);
+    _client->close();
     _onDisconnect();
     return;
   }

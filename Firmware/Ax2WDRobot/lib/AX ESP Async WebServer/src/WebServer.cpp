@@ -52,8 +52,7 @@ AsyncWebServer::AsyncWebServer(uint16_t port)
     c->setAckTimeout(2000);
     AsyncWebServerRequest *r = new AsyncWebServerRequest((AsyncWebServer*)s, c);
     if(r == NULL){
-      c->close(true);
-      c->free();
+      c->close();
       delete c;
     }
   }, this);

@@ -356,7 +356,7 @@ size_t AsyncAbstractResponse::_ack(AsyncWebServerRequest *request, size_t len, u
     if(!_sendContentLength || _ackedLength >= _writtenLength){
       _state = RESPONSE_END;
       if(!_chunked && !_sendContentLength)
-        request->client()->close(true);
+        request->client()->close();
     }
   }
   return 0;
